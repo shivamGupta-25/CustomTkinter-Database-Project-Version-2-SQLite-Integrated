@@ -565,7 +565,7 @@ class UserLogin(ctk.CTkFrame):
         frgt_button = OtherButton(master=self, text="Forget Password?", command=frgt_pass)
         frgt_button.place(x=163, y=325, anchor=tk.CENTER)
 
-        BackToWindowImg = ctk.CTkImage(light_image=Image.open(r"assets/delete.png"), size=(25, 25))
+        BackToWindowImg = ctk.CTkImage(light_image=Image.open(r".\assets\delete.png"), size=(25, 25))
         bg_label = ctk.CTkLabel(master=self, image=BackToWindowImg, text="", fg_color="#2E2F33", cursor= "hand2")
         bg_label.bind("<Button-1>",BackToWindow)
         bg_label.place(x=300, y=50, anchor="se")
