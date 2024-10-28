@@ -126,11 +126,11 @@ class Application(ctk.CTk):
         self.resizable(False, False)
         ctk.set_appearance_mode("dark")
         self.title("Login")
-        self.iconbitmap(r'assets\window_icon.ico')
+        self.iconbitmap(r'.\assets\window_icon.ico')
 
         # Setting Background Image
         background_image = ctk.CTkImage(
-            light_image=Image.open(r"assets\background_img1.png").filter(ImageFilter.GaussianBlur(6)), 
+            light_image=Image.open(r".\assets\background_img1.png").filter(ImageFilter.GaussianBlur(6)), 
             size=(600, 440)
         )
         self.bg_label = ctk.CTkLabel(master=self, image=background_image, text="")
@@ -159,7 +159,7 @@ class Window(ctk.CTkFrame):
             self.app.login_window_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
         # Setting login img
-        win_img = ctk.CTkImage(Image.open(r"assets\window_img.png"), size=(80, 80))
+        win_img = ctk.CTkImage(Image.open(r".\assets\window_img.png"), size=(80, 80))
         
         # Create a label widget to hold the login image
         win_img_label = ctk.CTkLabel(master=self, image=win_img, text="")
@@ -172,7 +172,7 @@ class Window(ctk.CTkFrame):
         login_button = CustomButton(master=self, text="Login", command=loginAccountWindow)
         login_button.place(x=50, y=240)
 
-        delete_window_Img = ctk.CTkImage(light_image=Image.open(r"assets\delete_window.png"), size=(30, 30))
+        delete_window_Img = ctk.CTkImage(light_image=Image.open(r".\assets\delete_window.png"), size=(30, 30))
         delete_window_Img_label = ctk.CTkLabel(master=self, image=delete_window_Img, text="", fg_color="#2E2F33", cursor= "hand2")
         delete_window_Img_label.bind("<Button-1>",DeleteWindow)
         delete_window_Img_label.place(x=300, y=50, anchor="se")
@@ -200,7 +200,7 @@ class Add_account_Window(ctk.CTkFrame):
             self.app.window_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
         # Setting login img
-        add_user_img = ctk.CTkImage(Image.open(r"assets\Add_Account.png"), size=(80, 80))
+        add_user_img = ctk.CTkImage(Image.open(r".\assets\Add_Account.png"), size=(80, 80))
         
         # Create a label widget to hold the login image
         add_user_img_label = ctk.CTkLabel(master=self, image=add_user_img, text="")
@@ -237,7 +237,7 @@ class login_Window(ctk.CTkFrame):
             self.app.window_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
         # Setting login img
-        login_img = ctk.CTkImage(Image.open(r"assets\enter.png"), size=(80, 80))
+        login_img = ctk.CTkImage(Image.open(r".\assets\enter.png"), size=(80, 80))
         
         # Create a label widget to hold the login image
         login_img_label = ctk.CTkLabel(master=self, image=login_img, text="")
@@ -308,7 +308,7 @@ class Add_admin_account(ctk.CTkFrame):
                 messagebox.showinfo("Cancelled", "The action was cancelled.")
 
         # Setting login img
-        add_admin_img = ctk.CTkImage(Image.open(r"assets\profile.png"), size=(80, 80))
+        add_admin_img = ctk.CTkImage(Image.open(r".\assets\profile.png"), size=(80, 80))
         
         # Create a label widget to hold the login image
         add_admin_img_label = ctk.CTkLabel(master=self, image= add_admin_img, text="")
@@ -382,7 +382,7 @@ class Add_user_account(ctk.CTkFrame):
                 messagebox.showinfo("Cancelled", "The action was cancelled.")
 
         # Setting login img
-        add_user_img = ctk.CTkImage(Image.open(r"assets\man.png"), size=(80, 80))
+        add_user_img = ctk.CTkImage(Image.open(r".\assets\man.png"), size=(80, 80))
         
         # Create a label widget to hold the login image
         add_user_img_label = ctk.CTkLabel(master=self, image=add_user_img, text="")
@@ -459,7 +459,7 @@ class AdminLogin(ctk.CTkFrame):
             self.app.window_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
         # Setting login img
-        admin_login_img = ctk.CTkImage(Image.open(r"assets\Admin_Login.png"), size=(80, 80))
+        admin_login_img = ctk.CTkImage(Image.open(r".\assets\Admin_Login.png"), size=(80, 80))
         
         # Create a label widget to hold the login image
         admin_login_img_label = ctk.CTkLabel(master=self, image=admin_login_img, text="")
@@ -480,7 +480,7 @@ class AdminLogin(ctk.CTkFrame):
         frgt_button = OtherButton(master=self, text="Forget Password?", command=frgt_pass)
         frgt_button.place(x=163, y=325, anchor=tk.CENTER)
 
-        BackToWindowImg = ctk.CTkImage(light_image=Image.open(r"assets/delete.png"), size=(25, 25))
+        BackToWindowImg = ctk.CTkImage(light_image=Image.open(r".\assets\delete.png"), size=(25, 25))
         bg_label = ctk.CTkLabel(master=self, image=BackToWindowImg, text="", fg_color="#2E2F33", cursor= "hand2")
         bg_label.bind("<Button-1>",BackToWindow)
         bg_label.place(x=300, y=50, anchor="se")
@@ -544,7 +544,7 @@ class UserLogin(ctk.CTkFrame):
             self.app.window_frame = Window(self.app.bg_label, self.app)
             self.app.window_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
-        user_login_img = ctk.CTkImage(Image.open(r"assets\teamwork.png"), size=(80, 80))
+        user_login_img = ctk.CTkImage(Image.open(r".\assets\teamwork.png"), size=(80, 80))
         
         # Create a label widget to hold the login image
         user_login_img_label = ctk.CTkLabel(master=self, image=user_login_img, text="")
@@ -614,7 +614,7 @@ class FindAccount(ctk.CTkFrame):
             self.app.login_window_frame = login_Window(self.app.bg_label, self.app)  # Show the login frame again
             self.app.login_window_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
-        find_account_img = ctk.CTkImage(Image.open(r"assets\error.png"), size = (80, 80))
+        find_account_img = ctk.CTkImage(Image.open(r".\assets\error.png"), size = (80, 80))
         find_account_img_label=ctk.CTkLabel(master=self, image=find_account_img, text="")
         find_account_img_label.place(x=160, y=65, anchor = tk.CENTER)
         
@@ -659,7 +659,7 @@ class OTPEntry(ctk.CTkFrame):
             self.app.login_window_frame = login_Window(self.app.bg_label, self.app)
             self.app.login_window_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
-        otp_img = ctk.CTkImage(Image.open(r"assets\one-time-password.png"), size = (80, 80))
+        otp_img = ctk.CTkImage(Image.open(r".\assets\one-time-password.png"), size = (80, 80))
 
         # Create a label widget to hold the OTP image
         otp_img_label=ctk.CTkLabel(master=self, image=otp_img, text="")
@@ -744,7 +744,7 @@ class ResetPassword(ctk.CTkFrame):
                 self.app.login_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
         # Setting reset password img
-        reset_pass_img = ctk.CTkImage(Image.open(r"assets\reset-password.png"), size=(50, 50))
+        reset_pass_img = ctk.CTkImage(Image.open(r".\assets\reset-password.png"), size=(50, 50))
         
         # Create a label widget to hold the reset pass image
         reset_pass_img_label = ctk.CTkLabel(master=self, image=reset_pass_img, text="")
