@@ -6,6 +6,7 @@ import sqlite3
 import random
 import smtplib
 from email.message import EmailMessage
+import os
 
 
 # Connect to database
@@ -29,7 +30,7 @@ conn.execute(user_table_create_query)
 # conn.execute("""DELETE FROM users""")
 
 # Username and password
-username = "guptashivamoct25@gmail.com"
+username = os.environ.get("GMail_ID")
 password = "shivam@123"
 
 # Check if the user already exists in the admin_users table
@@ -54,9 +55,9 @@ def generate_otp(is_admin, user_id):
         server = smtplib.SMTP('smtp.gmail.com', 587)
         server.starttls()
 
-        from_mail = 'guptashivam25oct@gmail.com'
-        server.login(from_mail, 'mxtq ilmg krpo sgws')
-
+        from_mail = os.environ.get("GMail_ID")
+        #print(from_mail)
+        server.login(from_mail, os.environ.get("GMail_Pass For Sending Mail"))
         message = f"Subject: OTP Verification\n\nYour OTP is: {otp}"
         server.sendmail(from_mail, user_id, message)
         server.quit()
