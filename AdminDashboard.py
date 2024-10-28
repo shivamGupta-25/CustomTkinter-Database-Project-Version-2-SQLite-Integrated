@@ -10,10 +10,10 @@ ctk.set_appearance_mode("dark")
 
 # Create the main window
 root = ctk.CTk()
-root.geometry("600x440")
+root.geometry("900x440")
 root.title("MAIN")
 
-label = ctk.CTkLabel(master=root, text="This is main window", font=("DM Sans", 50, 'bold'))
+label = ctk.CTkLabel(master=root, text="This is Admin DashBoard window", font=("DM Sans", 50, 'bold'))
 label.pack()
 
 

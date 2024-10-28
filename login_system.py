@@ -438,8 +438,8 @@ class AdminLogin(ctk.CTkFrame):
                             messagebox.showinfo("Success!", "Login is Successful")
                             cursor.close()
                             conn.close()
-                            self.app.destroy()
-                            import main
+                            self.after(100, lambda: [self.app.destroy(), self.parent.deiconify()])
+                            import AdminDashboard
                         else:
                             messagebox.showerror("Error!!",'Wrong Credentials')
                     else:
@@ -523,8 +523,8 @@ class UserLogin(ctk.CTkFrame):
                             messagebox.showinfo("Success!", "Login is Successful")
                             cursor.close()
                             conn.close()
-                            self.app.destroy()
-                            import main
+                            self.after(100, lambda: [self.app.destroy(), self.parent.deiconify()])
+                            import UserDashboard
                         else:
                             messagebox.showerror("Error!!",'Wrong Credentials')
                     else:
