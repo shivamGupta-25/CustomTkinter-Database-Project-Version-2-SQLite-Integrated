@@ -268,7 +268,8 @@ class Add_admin_account(ctk.CTkFrame):
 
             if username == '' or password == '' or admin_code == '':
                 messagebox.showerror("Error!!","All fields are required")
-
+            elif not username.endswith("@gmail.com"):
+                messagebox.showerror(message="Enter Valid Email ID")
             elif admin_code != '1234':
                 messagebox.showerror("Error!","Wrong Admin Code")
             else:
@@ -343,6 +344,8 @@ class Add_user_account(ctk.CTkFrame):
 
             if username == '' or password == '':
                 messagebox.showerror("Error!!","All fields are required")
+            elif not username.endswith("@gmail.com"):
+                messagebox.showerror(message="Enter Valid Email ID")
             else:
                 try:
                     conn = sqlite3.connect("data.db")
