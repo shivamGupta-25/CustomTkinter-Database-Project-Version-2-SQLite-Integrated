@@ -1,63 +1,71 @@
 import tkinter as tk
 import customtkinter as ctk
-from PIL import Image, ImageFilter
+from PIL import Image, ImageFilter, ImageDraw
 from tkinter import messagebox
 import sqlite3
 import random
 import smtplib
 from email.message import EmailMessage
 import os
+from tkinter.filedialog import askopenfilename
+Image.MAX_IMAGE_PIXELS = None
 
+# Setting up the Database
+connection = sqlite3.connect("Database.db")
+cursor = connection.cursor()
 
-# Connect to database
-conn = sqlite3.connect("data.db")
-cursor = conn.cursor()
+# Student Details Table
+student_table = """CREATE TABLE IF NOT EXISTS StudentDetails (
+                    StudentID INTEGER PRIMARY KEY AUTOINCREMENT,
+                    StudentName TEXT NOT NULL,
+                    Gender TEXT,
+                    Age INTEGER,
+                    Contact INTEGER,
+                    Course TEXT,
+                    Email TEXT UNIQUE NOT NULL,
+                    Pass TEXT NOT NULL,
+                    img BLOB
+                )"""
 
-# Create tables if they do not exist
-admin_table_create_query = """CREATE TABLE IF NOT EXISTS admin_users(
-                    adminID TEXT PRIMARY KEY,
-                    pass TEXT
-                    )"""
-user_table_create_query = """CREATE TABLE IF NOT EXISTS users(
-                    userID TEXT PRIMARY KEY,
-                    pass TEXT
-                    )"""
+# Admin Details Table
+admin_table = """CREATE TABLE IF NOT EXISTS AdminDetails (
+                    AdminID TEXT PRIMARY KEY,
+                    AdminName TEXT NOT NULL,
+                    Email TEXT UNIQUE NOT NULL,
+                    Pass TEXT NOT NULL,
+                    img BLOB
+                )"""
 
-conn.execute(admin_table_create_query)
-conn.execute(user_table_create_query)
+# connection.execute("DROP TABLE StudentDetails")
+# connection.execute("DROP TABLE AdminDetails")
 
-# conn.execute("""DELETE FROM admin_users""")
-# conn.execute("""DELETE FROM users""")
+# Creating Table If table doesn't exist
+connection.execute(student_table)
+connection.execute(admin_table)
 
-# Username and password
-username = os.environ.get("GMail_ID")
-password = "shivam@123"
+# Fetching list of tables in the database
+cursor.execute("SELECT seq FROM sqlite_sequence WHERE name='StudentDetails'")
+result = cursor.fetchone()
 
-# Check if the user already exists in the admin_users table
-query = "SELECT * FROM admin_users WHERE adminID = ?"
-values = (username,)
-cursor.execute(query, values)
-record = cursor.fetchone()
+# Setting Autoincrement value as SQLite doesn't provide Autoincrement within the table 
+if result is None:
+    connection.execute("INSERT INTO sqlite_sequence (name, seq) VALUES ('StudentDetails', 999);")
 
-# Insert only if user does not exist in the table
-if not record:
-    cursor.execute("INSERT INTO admin_users VALUES (?, ?)", (username, password))
-    cursor.execute("INSERT INTO users VALUES (?, ?)", (username, password))
-
-# Commit changes and close connection
-conn.commit()
+connection.commit()
 cursor.close()
-conn.close()
+connection.close()
 
+# generating OTP
 def generate_otp(is_admin, user_id):
+    #generating 4 digit random string
     otp = "".join([str(random.randint(0, 9)) for _ in range(4)])
     try:
         server = smtplib.SMTP('smtp.gmail.com', 587)
         server.starttls()
 
-        from_mail = os.environ.get("GMail_ID")
+        from_mail = os.environ.get("GMail_ID") # hid the senders mail in Environment variable
         #print(from_mail)
-        server.login(from_mail, os.environ.get("GMail_Pass For Sending Mail"))
+        server.login(from_mail, os.environ.get("GMail_Pass For Sending Mail")) # hid the senders mail password in Environment variable
         message = f"Subject: OTP Verification\n\nYour OTP is: {otp}"
         server.sendmail(from_mail, user_id, message)
         server.quit()
@@ -70,6 +78,8 @@ def generate_otp(is_admin, user_id):
         #print("this is users: ",otp)
         return otp, is_admin
 
+# Making widgets reuseable
+#button
 class CustomButton(ctk.CTkButton):
     def __init__(self, master, text, command=None, **kwargs):
         super().__init__(master, text=text, command=command, **kwargs)
@@ -80,7 +90,7 @@ class CustomButton(ctk.CTkButton):
             corner_radius=18,
             cursor = "hand2"
         )
-
+# other button 
 class OtherButton(ctk.CTkButton):
     def __init__(self, master, text, command=None, **kwargs):
         super().__init__(master, text=text, command=command, **kwargs)
@@ -99,7 +109,7 @@ class OtherButton(ctk.CTkButton):
             corner_radius=18,
             cursor="hand2",
         )
-
+#Entry
 class CustomEntry(ctk.CTkEntry):
     def __init__(self, master=None, placeholder_text="", **kwargs):
         super().__init__(
@@ -116,6 +126,7 @@ class CustomEntry(ctk.CTkEntry):
             **kwargs
         )
 
+
 def main():
     app = Application()
     app.mainloop()
@@ -123,7 +134,7 @@ def main():
 class Application(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.geometry("600x440")
+        self.geometry("500x600")
         self.resizable(False, False)
         ctk.set_appearance_mode("dark")
         self.title("Login")
@@ -132,12 +143,13 @@ class Application(ctk.CTk):
         # Setting Background Image
         background_image = ctk.CTkImage(
             light_image=Image.open(r".\assets\background_img1.png").filter(ImageFilter.GaussianBlur(6)), 
-            size=(600, 440)
+            size=(500, 600)
         )
+        #placing Background Image
         self.bg_label = ctk.CTkLabel(master=self, image=background_image, text="")
         self.bg_label.pack()
 
-        # Initialize the Login frame
+        # Initialize the Window frame
         self.window_frame = Window(self.bg_label, self)
 
 class Window(ctk.CTkFrame):
@@ -159,13 +171,11 @@ class Window(ctk.CTkFrame):
             self.app.login_window_frame = login_Window(self.app.bg_label, self.app)
             self.app.login_window_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
-        # Setting login img
+        # Setting win img
         win_img = ctk.CTkImage(Image.open(r".\assets\window_img.png"), size=(80, 80))
-        
-        # Create a label widget to hold the login image
+        # Create a label widget to hold the win image
         win_img_label = ctk.CTkLabel(master=self, image=win_img, text="")
         win_img_label.place(x=160, y=90, anchor=tk.CENTER)
-
 
         create_account_button = CustomButton(master=self, text="Create Account", command=CreateAccountWindow)
         create_account_button.place(x=50, y=170)
@@ -173,25 +183,27 @@ class Window(ctk.CTkFrame):
         login_button = CustomButton(master=self, text="Login", command=loginAccountWindow)
         login_button.place(x=50, y=240)
 
+        # Setting Cross Icon on frame
         delete_window_Img = ctk.CTkImage(light_image=Image.open(r".\assets\delete_window.png"), size=(30, 30))
         delete_window_Img_label = ctk.CTkLabel(master=self, image=delete_window_Img, text="", fg_color="#2E2F33", cursor= "hand2")
         delete_window_Img_label.bind("<Button-1>",DeleteWindow)
         delete_window_Img_label.place(x=300, y=50, anchor="se")
         # n, ne, e, se, s, sw, w, nw, or center
 
-        self.place(relx=0.5, rely=0.5, anchor=tk.CENTER)  # Center the frame
+        self.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
 class Add_account_Window(ctk.CTkFrame):
-
     def __init__(self, parent, app):
         super().__init__(master=parent, width=320, height=350, fg_color="#2E2F33", bg_color="#676767", corner_radius=22)
         self.app = app
 
         def AddAdmin():
+            self.place_forget()
             self.app.add_admin_account_frame = Add_admin_account(self.app.bg_label, self.app)
             self.app.add_admin_account_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
         def AddUser():
+            self.place_forget()
             self.app.add_user_account_frame = Add_user_account(self.app.bg_label, self.app)
             self.app.add_user_account_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
@@ -200,10 +212,10 @@ class Add_account_Window(ctk.CTkFrame):
             self.app.window_frame = Window(self.app.bg_label, self.app)
             self.app.window_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
-        # Setting login img
+        # Setting win img
         add_user_img = ctk.CTkImage(Image.open(r".\assets\Add_Account.png"), size=(80, 80))
         
-        # Create a label widget to hold the login image
+        # Create a label widget to hold the win image
         add_user_img_label = ctk.CTkLabel(master=self, image=add_user_img, text="")
         add_user_img_label.place(x=170, y=90, anchor=tk.CENTER)
 
@@ -217,7 +229,7 @@ class Add_account_Window(ctk.CTkFrame):
         BackToWindow = OtherButton(master=self, text="Back", cursor="hand2", command=BackToWindow)
         BackToWindow.place(x=163, y=305, anchor = tk.CENTER)
 
-        self.place(relx=0.5, rely=0.5, anchor=tk.CENTER)  # Center the frame
+        self.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
 class login_Window(ctk.CTkFrame):
     def __init__(self, parent, app):
@@ -225,10 +237,12 @@ class login_Window(ctk.CTkFrame):
         self.app = app
 
         def Admin_Login():
+            self.place_forget()
             self.app.admin_login_frame = AdminLogin(self.app.bg_label, self.app)
             self.app.admin_login_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
         def User_Login():
+            self.place_forget()
             self.app.user_login_frame = UserLogin(self.app.bg_label, self.app)
             self.app.user_login_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
@@ -254,50 +268,107 @@ class login_Window(ctk.CTkFrame):
         BackToWindow = OtherButton(master=self, text="Back", cursor="hand2", command=BackToWindow)
         BackToWindow.place(x=163, y=305, anchor = tk.CENTER)
 
-        self.place(relx=0.5, rely=0.5, anchor=tk.CENTER)  # Center the frame
+        self.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
 class Add_admin_account(ctk.CTkFrame):
     def __init__(self, parent, app):
-        super().__init__(master=parent, width=320, height=350, fg_color="#2E2F33", bg_color="#676767", corner_radius=22)
+        super().__init__(master=parent, width=320, height=510, fg_color="#2E2F33", bg_color="#676767", corner_radius=22)
         self.app = app
+
+        pic_path = tk.StringVar()
+        pic_path.set('')
+
+        def open_pic():
+            path = askopenfilename()
+
+            if path:
+                # Open and resize the image using PIL
+                img = Image.open(path).resize((100, 100))
+
+                # Create a circular mask
+                mask = Image.new("L", img.size, 0)
+                draw = ImageDraw.Draw(mask)
+                draw.ellipse((0, 0) + img.size, fill=255)
+
+                # Create a new image with transparency (RGBA) and apply the mask
+                rounded_img = Image.new("RGBA", img.size, (0, 0, 0, 0))
+                rounded_img.paste(img, mask=mask)
+
+                # Convert the rounded image to CTkImage
+                ctk_img = ctk.CTkImage(rounded_img, size=(100, 100))
+                pic_path.set(path)
+
+                # Update the button with the rounded CTkImage
+                img_button.configure(image=ctk_img)
+                img_button.image = ctk_img  # Bind the image to prevent garbage collection
 
         # Functions
         def create():
-            admin_code = self.AdminCode_entry.get()
-            username = self.user_entry.get()
-            password = self.createPass_entry.get()
+            pic_data = b''
+            if pic_path.get() != '':
+                # Open the selected image
+                img = Image.open(pic_path.get()).resize((135, 135))
 
-            if username == '' or password == '' or admin_code == '':
+                # Create a circular mask
+                mask = Image.new("L", img.size, 0)
+                draw = ImageDraw.Draw(mask)
+                draw.ellipse((0, 0) + img.size, fill=255)
+
+                # Create a new image with transparency and apply the mask
+                rounded_img = Image.new("RGBA", img.size, (0, 0, 0, 0))
+                rounded_img.paste(img, mask=mask)
+
+                # Save the rounded image temporarily
+                rounded_img.save('temp_pic.png')
+
+                # Read the binary data from the saved rounded image
+                with open('temp_pic.png', 'rb') as read_data:
+                    pic_data = read_data.read()
+            else:
+                # If no custom image, load the default profile picture
+                with open(r".\assets\profile_pic.png", 'rb') as read_data:
+                    pic_data = read_data.read()
+
+
+            admin_code = self.AdminCode_entry.get()
+            admin_id = self.AdminID_entry.get()
+            admin_name = self.Name_entry.get()
+            email = self.email_entry.get()
+            password = self.createPass_entry.get()
+            pic_data = pic_data
+
+            if admin_code == '' or admin_id == '' or admin_name == '' or email == '' or password =='':
                 messagebox.showerror("Error!!","All fields are required")
-            elif not username.endswith("@gmail.com"):
+            elif not email.endswith("@gmail.com"):
                 messagebox.showerror(message="Enter Valid Email ID")
             elif admin_code != '1234':
                 messagebox.showerror("Error!","Wrong Admin Code")
             else:
                 try:
-                    conn = sqlite3.connect("data.db")
+                    conn = sqlite3.connect("database.db")
                     cursor = conn.cursor()
                     # Query to check if the user exist
-                    query = "SELECT * FROM admin_users WHERE adminID = ?"
-                    values = (username,)
+                    query = "SELECT * FROM AdminDetails WHERE AdminID = ?"
+                    values = (admin_id,)
                     cursor.execute(query, values)
                     record = cursor.fetchone()
-                    if record and record[0] == username:
-                        messagebox.showwarning("User Exist!",message="Admin Already Exist")
+                    #print(record)
+                    if record and record[0] == admin_id:
+                        messagebox.showwarning("User Exist!",message="User Already Exist")
                     else:
-                        query = "INSERT INTO admin_users (adminID, pass) VALUES (?, ?)"
-                        values = (username, password)
+                        query = "INSERT INTO AdminDetails (AdminID, AdminName, Email, Pass, img) VALUES (?, ?, ?, ?, ?)"
+                        values = (admin_id, admin_name, email, password, pic_data)
                         cursor.execute(query, values)
                         conn.commit()
                         # Show success message
-                        messagebox.showinfo("Success!", "User has been added successfully.")
+                        messagebox.showinfo("Success!", "Admin has been added successfully.")
                         # Close cursor and connection
                         cursor.close()
                         conn.close()
-                        self.app.login_window_frame = login_Window(self.app.bg_label, self.app)
-                        self.app.login_window_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+                        self.place_forget()
+                        self.app.admin_login_frame = AdminLogin(self.app.bg_label, self.app)
+                        self.app.admin_login_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
                 except Exception as e:
-                    # More specific error handling
                     messagebox.showerror("Database Error", f"An error occurred: {e}")
 
         def back_to_window():
@@ -309,59 +380,124 @@ class Add_admin_account(ctk.CTkFrame):
             else:
                 messagebox.showinfo("Cancelled", "The action was cancelled.")
 
-        # Setting login img
-        add_admin_img = ctk.CTkImage(Image.open(r".\assets\profile.png"), size=(80, 80))
-        
-        # Create a label widget to hold the login image
-        add_admin_img_label = ctk.CTkLabel(master=self, image= add_admin_img, text="")
-        add_admin_img_label.place(x=160, y=60, anchor=tk.CENTER)
+        add_pic_frm = ctk.CTkFrame(master=self, width = 110, height = 110, corner_radius=50)
+        add_pic_frm.place(x=100, y=12)
+        img_button = ctk.CTkButton(master=add_pic_frm, image=ctk.CTkImage(Image.open(r".\assets\profile.png"), size=(100, 100)),
+                                   text="", fg_color= "#2E2F33", bg_color="#2E2F33", hover=None, cursor = "hand2", command=open_pic)
+        img_button.pack()
 
         self.AdminCode_entry = CustomEntry(master=self, placeholder_text="Admin Code")
-        self.AdminCode_entry.place(x=50, y=110)
+        self.AdminCode_entry.place(x=50, y=130)
 
-        self.user_entry = CustomEntry(master=self, placeholder_text="Email")
-        self.user_entry.place(x=50, y=160)
+        self.AdminID_entry = CustomEntry(master=self, placeholder_text="Admin ID")
+        self.AdminID_entry.place(x=50, y=185)
+
+        self.Name_entry = CustomEntry(master=self, placeholder_text="Full Name")
+        self.Name_entry.place(x=50, y=240)
+
+        self.email_entry = CustomEntry(master=self, placeholder_text="Email")
+        self.email_entry.place(x=50, y=295)
 
         self.createPass_entry = CustomEntry(master=self, placeholder_text="Create Password", show="*")
-        self.createPass_entry.place(x=50, y=210)
+        self.createPass_entry.place(x=50, y=350)
 
         create_button = CustomButton(master=self, text="Create Account", command=create)
-        create_button.place(x=50, y=260)
+        create_button.place(x=50, y=420)
 
         back_to_window_button = OtherButton(master=self, text="Back to Window", command=back_to_window)
-        back_to_window_button.place(x=163, y=320, anchor=tk.CENTER)
+        back_to_window_button.place(x=163, y=480, anchor=tk.CENTER)
 
-        self.place(relx=0.5, rely=0.5, anchor=tk.CENTER)  # Center the frame
+        self.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
 class Add_user_account(ctk.CTkFrame):
     def __init__(self, parent, app):
-        super().__init__(master=parent, width=320, height=350, fg_color="#2E2F33", bg_color="#676767", corner_radius=22)
+        super().__init__(master=parent, width=480, height=520, fg_color="#2E2F33", bg_color="#676767", corner_radius=22)
         self.app = app
+
+        pic_path = tk.StringVar()
+        pic_path.set('')
+
+        def open_pic():
+            path = askopenfilename()
+            if path:
+                # Open and resize the image using PIL
+                img = Image.open(path).resize((135, 135))
+
+                # Create a circular mask
+                mask = Image.new("L", img.size, 0)
+                draw = ImageDraw.Draw(mask)
+                draw.ellipse((0, 0) + img.size, fill=255)
+
+                # Create a new image with transparency (RGBA) and apply the mask
+                rounded_img = Image.new("RGBA", img.size, (0, 0, 0, 0))
+                rounded_img.paste(img, mask=mask)
+
+                # Convert the rounded image to CTkImage
+                ctk_img = ctk.CTkImage(rounded_img, size=(135, 135))
+                pic_path.set(path)
+
+                # Update the button with the rounded CTkImage
+                img_button.configure(image=ctk_img)
+                img_button.image = ctk_img  # Bind the image to prevent garbage collection
 
         # Functions
         def create_user():
-            username = self.user_entry.get()
-            password = self.createPass_entry.get()
+            pic_data = b''
+            if pic_path.get() != '':
+                # Open the selected image
+                img = Image.open(pic_path.get()).resize((135, 135))
 
-            if username == '' or password == '':
+                # Create a circular mask
+                mask = Image.new("L", img.size, 0)
+                draw = ImageDraw.Draw(mask)
+                draw.ellipse((0, 0) + img.size, fill=255)
+
+                # Create a new image with transparency and apply the mask
+                rounded_img = Image.new("RGBA", img.size, (0, 0, 0, 0))
+                rounded_img.paste(img, mask=mask)
+
+                # Save the rounded image temporarily
+                rounded_img.save('temp_pic.png')
+
+                # Read the binary data from the saved rounded image
+                with open('temp_pic.png', 'rb') as read_data:
+                    pic_data = read_data.read()
+            else:
+                # If no custom image, load the default profile picture
+                with open(r".\assets\profile_pic.png", 'rb') as read_data:
+                    pic_data = read_data.read()
+
+            stud_name = self.stud_name_entry.get()
+            gender = combobox_var.get()
+            age = self.age_entry.get()
+            phone_no = self.phone_entry.get()
+            course = course_var.get()
+            email = self.email_entry.get()
+            password = self.createPass_entry.get()
+            pic_data = pic_data
+
+            if stud_name == '' or gender == "Gender" or age == '' or phone_no == '' or course =='Course' or email=='' or password == '':
                 messagebox.showerror("Error!!","All fields are required")
-            elif not username.endswith("@gmail.com"):
+            elif len(phone_no) != 10:
+                messagebox.showerror(message="Enter Valid phone number")
+            elif not email.endswith("@gmail.com"):
                 messagebox.showerror(message="Enter Valid Email ID")
             else:
                 try:
-                    conn = sqlite3.connect("data.db")
+                    conn = sqlite3.connect("database.db")
                     cursor = conn.cursor()
-
                     # Query to check if the user exist
-                    query = "SELECT * FROM users WHERE userID = ?"
-                    values = (username,)
+                    query = "SELECT * FROM StudentDetails WHERE Email = ?"
+                    values = (email,)
                     cursor.execute(query, values)
                     record = cursor.fetchone()
-                    if record and record[0] == username:
+                    #print(record)
+                    if record and record[6] == email:
                         messagebox.showwarning("User Exist!",message="User Already Exist")
                     else:
-                        query = "INSERT INTO users (userID, pass) VALUES (?, ?)"
-                        values = (username, password)
+                        query = """INSERT INTO StudentDetails (StudentName, Gender, Age, Contact, Course, Email, Pass, img) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)"""
+                        values = (stud_name, gender, age, phone_no, course, email, password, pic_data)
                         cursor.execute(query, values)
                         conn.commit()
                         # Show success message
@@ -369,12 +505,11 @@ class Add_user_account(ctk.CTkFrame):
                         # Close cursor and connection
                         cursor.close()
                         conn.close()
-                        self.app.login_window_frame = login_Window(self.app.bg_label, self.app)
-                        self.app.login_window_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+                        self.place_forget()
+                        self.app.user_login_frame = UserLogin(self.app.bg_label, self.app)
+                        self.app.user_login_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
                 except Exception as e:
-                    # More specific error handling
                     messagebox.showerror("Database Error", f"An error occurred: {e}")
-
 
         def back_to_window():
             response = messagebox.askyesno("Confirmation", "Are you Sure you want to exit this window?")
@@ -385,25 +520,60 @@ class Add_user_account(ctk.CTkFrame):
             else:
                 messagebox.showinfo("Cancelled", "The action was cancelled.")
 
-        # Setting login img
-        add_user_img = ctk.CTkImage(Image.open(r".\assets\man.png"), size=(80, 80))
-        
-        # Create a label widget to hold the login image
-        add_user_img_label = ctk.CTkLabel(master=self, image=add_user_img, text="")
-        add_user_img_label.place(x=170, y=60, anchor=tk.CENTER)
+        add_pic_frm = ctk.CTkFrame(master=self, width = 110, height = 110, corner_radius=50)
+        add_pic_frm.place(x=180, y=12)
+        img_button = ctk.CTkButton(master=add_pic_frm, image=ctk.CTkImage(Image.open(r".\assets\man.png"), size=(135, 135)),
+                                   text="", fg_color= "#2E2F33", bg_color="#2E2F33", hover=None, cursor="hand2", command=open_pic)
+        img_button.pack()
 
+        self.stud_name_entry = CustomEntry(master=self, placeholder_text="Full Name")
+        self.stud_name_entry.place(x=10, y=160)
 
-        self.user_entry = CustomEntry(master=self, placeholder_text="Email")
-        self.user_entry.place(x=50, y=130)
+        combobox_var = ctk.StringVar(value="Gender")
+        gender_comboBox = ctk.CTkComboBox(master=self, values=["Male", "Female", "Other"], 
+                                                height=38,
+                                                width=220,
+                                                corner_radius=20,
+                                                border_width=0,
+                                                fg_color="white",
+                                                button_color="#1F6AA5",
+                                                button_hover_color="#144870",
+                                                text_color="black",
+                                                font=("Century Gothic", 12, 'bold'),
+                                                variable=combobox_var)
+        gender_comboBox.place(x=250, y=160)
+
+        self.age_entry = CustomEntry(master=self, placeholder_text="Age")
+        self.age_entry.place(x=10, y=220)
+    
+        self.phone_entry = CustomEntry(master=self, placeholder_text="Phone Number")
+        self.phone_entry.place(x=250, y=220)
+
+        course_var = ctk.StringVar(value="Course")
+        course_comboBox = ctk.CTkComboBox(master=self, values=["Python", "C++", "Java"], 
+                                                height=38,
+                                                width=220,
+                                                corner_radius=20,
+                                                border_width=0,
+                                                fg_color="white",
+                                                button_color="#1F6AA5",
+                                                button_hover_color="#144870",
+                                                text_color="#A4A6AC",
+                                                font=("Century Gothic", 12, 'bold'),
+                                                variable=course_var)
+        course_comboBox.place(x=10, y=280)
+
+        self.email_entry = CustomEntry(master=self, placeholder_text="Email")
+        self.email_entry.place(x=250, y=280)
 
         self.createPass_entry = CustomEntry(master=self, placeholder_text="Create Password", show='*')
-        self.createPass_entry.place(x=50, y=190)
+        self.createPass_entry.place(x=130, y=350)
 
         create_button =CustomButton(master=self, text="Create Account", command=create_user)
-        create_button.place(x=50, y=250)
+        create_button.place(x=130, y=420)
 
         back_to_window_button = OtherButton(master=self, text="Back to window", command=back_to_window)
-        back_to_window_button.place(x=163, y=310, anchor=tk.CENTER)
+        back_to_window_button.place(x=240, y=480, anchor=tk.CENTER)
 
         self.place(relx=0.5, rely=0.5, anchor=tk.CENTER)  # Center the frame
 
@@ -421,18 +591,17 @@ class AdminLogin(ctk.CTkFrame):
                 messagebox.showerror("Error!!","All fields are required")
             else:
                 try:
-                    conn = sqlite3.connect("data.db")
+                    conn = sqlite3.connect("Database.db")
                     cursor = conn.cursor()
 
                     # Query to check if the user exist
-                    query = "SELECT * FROM admin_users WHERE adminID = ?"
-                    values = (username,)
+                    query = "SELECT * FROM AdminDetails WHERE AdminID = ? OR Email = ?"
+                    values = (username, username)
                     cursor.execute(query, values)
                     record = cursor.fetchone()
                     if record:
-                        # Query to check if the user and password exist
-                        query = "SELECT * FROM admin_users WHERE adminID = ? AND pass = ?"
-                        values = (username, password)
+                        query = "SELECT * FROM AdminDetails WHERE (AdminID = ? OR Email = ?) AND Pass = ?"
+                        values = (username, username, password)
                         cursor.execute(query, values)
                         result = cursor.fetchone()
                         if result:
@@ -441,10 +610,11 @@ class AdminLogin(ctk.CTkFrame):
                             conn.close()
                             self.app.withdraw()
                             import AdminDashboard
+                            AdminDashboard.DashboardWindow(self.app)
                         else:
                             messagebox.showerror("Error!!",'Wrong Credentials')
                     else:
-                        messagebox.showinfo(message="User doesn't Exist!")
+                        messagebox.showerror(message="User doesn't Exist! or Wrong Username")
                 except Exception as e:
                     messagebox.showerror("Connection", f"Database Connection not established! Error: {str(e)}")
 
@@ -462,10 +632,10 @@ class AdminLogin(ctk.CTkFrame):
             self.app.window_frame = Window(self.app.bg_label, self.app)
             self.app.window_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
-        # Setting login img
+        # Setting win img
         admin_login_img = ctk.CTkImage(Image.open(r".\assets\Admin_Login.png"), size=(80, 80))
         
-        # Create a label widget to hold the login image
+        # Create a label widget to hold the win image
         admin_login_img_label = ctk.CTkLabel(master=self, image=admin_login_img, text="")
         admin_login_img_label.place(x=160, y=60, anchor=tk.CENTER)
 
@@ -506,30 +676,30 @@ class UserLogin(ctk.CTkFrame):
                 messagebox.showerror("Error!!","All fields are required")
             else:
                 try:
-                    conn = sqlite3.connect("data.db")
+                    conn = sqlite3.connect("Database.db")
                     cursor = conn.cursor()
 
                     # Query to check if the user exist
-                    query = "SELECT * FROM users WHERE userID = ?"
-                    values = (username,)
+                    query = "SELECT * FROM StudentDetails WHERE StudentID = ? OR Email = ?"
+                    values = (username, username)
                     cursor.execute(query, values)
                     record = cursor.fetchone()
                     if record:
-                        # Query to check if the user and password exist
-                        query = "SELECT * FROM users WHERE userID = ? AND pass = ?"
-                        values = (username, password)
+                        query = "SELECT * FROM StudentDetails WHERE (StudentID = ? OR Email = ?) AND Pass = ?"
+                        values = (username, username, password)
                         cursor.execute(query, values)
                         result = cursor.fetchone()
                         if result:
                             messagebox.showinfo("Success!", "Login is Successful")
                             cursor.close()
                             conn.close()
-                            self.app.withdraw()
-                            import UserDashboard
+                            self.app.withdraw()  # Hide login window
+                            import UserDashboard  # Import here to avoid circular import
+                            UserDashboard.DashboardWindow(self.app)  # Pass 'self.app' as argument
                         else:
                             messagebox.showerror("Error!!",'Wrong Credentials')
                     else:
-                        messagebox.showinfo(message="User doesn't Exist!")
+                        messagebox.showinfo(message="Incorrect Id or User doesn't Exist!")
                 except Exception as e:
                     messagebox.showerror("Connection", f"Database Connection not established! Error: {str(e)}")
 
@@ -586,21 +756,31 @@ class FindAccount(ctk.CTkFrame):
         def Continue():
             self.user_id = self.email_entry.get()
             if self.user_id =='':
-                messagebox.showerror("Error!","Please Enter Username")
+                messagebox.showerror("Error!","Please Enter EMail-ID")
             else:
                 try:
-                    conn = sqlite3.connect("data.db")
+                    conn = sqlite3.connect("database.db")
                     cursor = conn.cursor()
 
                     if self.is_admin:
                         # Query to check if the user exist
-                        query = "SELECT * FROM admin_users WHERE adminID = ?"
+                        query = "SELECT * FROM AdminDetails WHERE Email = ?"
                     else:
-                        query = "SELECT * FROM users WHERE userID = ?"
+                        query = "SELECT * FROM StudentDetails WHERE Email = ?"
                     values = (self.user_id,)
                     cursor.execute(query, values)
                     record = cursor.fetchone()
-                    if record and record[0] == self.user_id:
+                    if self.is_admin:
+                        if record and record[2] == self.user_id:
+                            cursor.close()
+                            conn.close()
+                            otp, is_admin = generate_otp(self.is_admin, self.user_id)
+                            self.place_forget()
+                            self.app.Otp_entry_frame = OTPEntry(self.app.bg_label, self.app, otp, self.user_id, is_admin)
+                            self.app.Otp_entry_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+                        else:
+                            messagebox.showerror("Invalid User","User not found or incorrect Username")
+                    elif record and record[6] == self.user_id:
                         cursor.close()
                         conn.close()
                         otp, is_admin = generate_otp(self.is_admin, self.user_id)
@@ -699,40 +879,43 @@ class ResetPassword(ctk.CTkFrame):
                 messagebox.showerror("Error!", "Field is required")
             elif passwrd == passwrd_repeat:
                 try:
-                    conn = sqlite3.connect("data.db")
+                    conn = sqlite3.connect("database.db")
                     cursor = conn.cursor()
-
-                    verifier = None
                     if is_admin:
                         # Update password in the database
-                        query = "UPDATE admin_users SET pass = ? WHERE adminID = ?"
-                        verifier = "admin"
+                        query = "UPDATE AdminDetails SET Pass = ? WHERE Email = ?"
                     else:
-                        query = "UPDATE users SET pass = ? WHERE userID = ?"
+                        query = "UPDATE StudentDetails SET pass = ? WHERE Email = ?"
                     values = (passwrd, self.user_id)
                     cursor.execute(query, values)
                     conn.commit()
 
                     # Verify the password update
-                    if verifier == "admin":
-                        query = "SELECT * FROM admin_users WHERE adminID = ? AND pass = ?"
+                    if is_admin:
+                        query = "SELECT * FROM AdminDetails WHERE Email = ? AND Pass = ?"
                     else:
-                        query = "SELECT * FROM users WHERE userID = ? AND pass = ?"
+                        query = "SELECT * FROM StudentDetails WHERE Email = ? AND Pass = ?"
     
                     values = (user_id, passwrd)
                     cursor.execute(query, values)
                     result = cursor.fetchone()
-
-                    if result and result[0] == self.user_id and result[1] == passwrd:
-                        messagebox.showinfo(message="Password Successfully reset")
-                        cursor.close()
-                        conn.close()
-                        if self.is_admin:
+                    if self.is_admin:
+                        if result and result[2] == self.user_id and result[3] == passwrd:
+                            messagebox.showinfo(message="Password Successfully reset")
+                            cursor.close()
+                            conn.close()
+                            self.place_forget()
                             self.app.admin_login_frame = AdminLogin(self.app.bg_label, self.app)
                             self.app.admin_login_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
                         else:
-                            self.app.user_login_frame = UserLogin(self.app.bg_label, self.app)
-                            self.app.user_login_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+                            messagebox.showerror(message="Password reset failed. Please try again.")
+                    elif result and result[6] == self.user_id and result[7] == passwrd:
+                        messagebox.showinfo(message="Password Successfully reset")
+                        cursor.close()
+                        conn.close()
+                        self.place_forget()
+                        self.app.user_login_frame = UserLogin(self.app.bg_label, self.app)
+                        self.app.user_login_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
                     else:
                         messagebox.showerror(message="Password reset failed. Please try again.")
                 except Exception as e:
@@ -744,6 +927,7 @@ class ResetPassword(ctk.CTkFrame):
         def cancel():
             message = messagebox.askquestion(message="Do you want to cancel?")
             if message == "yes":
+                self.place_forget()
                 self.app.login_frame = UserLogin(self.app.bg_label, self.app)
                 self.app.login_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
@@ -779,7 +963,6 @@ class ResetPassword(ctk.CTkFrame):
         cancel_button.place(x=163, y=320, anchor=tk.CENTER)
 
         self.place(relx=0.5, rely=0.5, anchor=tk.CENTER)  # Center the frame
-
 
 if __name__ == "__main__":
     main()
