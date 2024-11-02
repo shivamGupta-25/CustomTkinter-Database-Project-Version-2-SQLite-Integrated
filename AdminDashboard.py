@@ -109,12 +109,12 @@ class CustomEntry(ctk.CTkEntry):
         )
 
 class DashboardWindow(ctk.CTkToplevel):
-    def __init__(self, app, username):
-    #def __init__(self, app):
+    #def __init__(self, app, username):
+    def __init__(self, app):
         super().__init__()
         self.app = app
-        #self.userid = 'guptashivam25oct@gmail.com'
-        self.userid = username
+        self.userid = 'guptashivam25oct@gmail.com'
+        #self.userid = username
         #print(self.userid)
         self.geometry("930x580+100+50")
         self.title("Student Dashboard")
@@ -186,7 +186,6 @@ class DashboardWindow(ctk.CTkToplevel):
         self.active_button = self.button_refs[button_key]
         self.active_button.configure(font=("Century Gothic", 25,'bold', 'underline'))
 
-#------------------------------------------------------------------------------------
 
     def home(self):
         self.clear_page()
@@ -421,6 +420,8 @@ class DashboardWindow(ctk.CTkToplevel):
                 messagebox.showerror("Error",message="Enter Valid Email")
             elif len(phone) != 10:
                 messagebox.showerror("Error",message="Enter Valid Phone Number")
+            elif not id.isnumeric():
+                messagebox.showerror(message="Enter numeric ID")
             else:
                 conn = sqlite3.connect("database.db")
                 cursor = conn.cursor()
@@ -555,8 +556,10 @@ class DashboardWindow(ctk.CTkToplevel):
         style.configure('Treeview.Heading', font = ('arial', 15, 'bold'))
         style.configure('Treeview', font = ('arial', 15, 'bold'), rowheight = 32)
         
-        scrollbar = ttk.Scrollbar(rightFrame, orient="vertical")
+        scrollbar = ttk.Scrollbar(rightFrame, orient="vertical", command=tree.yview)
         scrollbar.grid(row=1, column=4, sticky='ns')
+
+        tree.config(yscrollcommand=scrollbar.set)
 
         treeview_data()
 
@@ -731,11 +734,11 @@ class DashboardWindow(ctk.CTkToplevel):
     def close_app(self):
         self.app.destroy()  # Close the main application completely
 
-# if __name__ == "__main__":
-#     # Initialize the main application root
-#     app = ctk.CTk()  
-#     app.withdraw()  # Hide the root window
+if __name__ == "__main__":
+    # Initialize the main application root
+    app = ctk.CTk()  
+    app.withdraw()  # Hide the root window
     
-#     # Show DashboardWindow directly
-#     dashboard = DashboardWindow(app)
-#     app.mainloop()
+    # Show DashboardWindow directly
+    dashboard = DashboardWindow(app)
+    app.mainloop()
