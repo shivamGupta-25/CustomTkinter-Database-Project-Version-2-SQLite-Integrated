@@ -109,12 +109,12 @@ class CustomEntry(ctk.CTkEntry):
         )
 
 class DashboardWindow(ctk.CTkToplevel):
-    #def __init__(self, app, username):
-    def __init__(self, app):
+    def __init__(self, app, username):
+    #def __init__(self, app):
         super().__init__()
         self.app = app
-        self.userid = 'guptashivam25oct@gmail.com'
-        #self.userid = username
+        #self.userid = 'guptashivam25oct@gmail.com'
+        self.userid = username
         #print(self.userid)
         self.geometry("930x580+100+50")
         self.title("Student Dashboard")
@@ -734,11 +734,11 @@ class DashboardWindow(ctk.CTkToplevel):
     def close_app(self):
         self.app.destroy()  # Close the main application completely
 
-if __name__ == "__main__":
-    # Initialize the main application root
-    app = ctk.CTk()  
-    app.withdraw()  # Hide the root window
+# if __name__ == "__main__":
+#     # Initialize the main application root
+#     app = ctk.CTk()  
+#     app.withdraw()  # Hide the root window
     
-    # Show DashboardWindow directly
-    dashboard = DashboardWindow(app)
-    app.mainloop()
+#     # Show DashboardWindow directly
+#     dashboard = DashboardWindow(app)
+#     app.mainloop()
