@@ -1,59 +1,109 @@
 import tkinter as tk
 import customtkinter as ctk
-from PIL import Image, ImageFilter, ImageDraw
-from tkinter import messagebox
+from PIL import Image, ImageFilter, ImageDraw, ImageGrab
+from tkinter import messagebox, filedialog
 import sqlite3
 import random
 import smtplib
-from email.message import EmailMessage
 import os
 from tkinter.filedialog import askopenfilename
+import io
+from io import BytesIO
 Image.MAX_IMAGE_PIXELS = None
 
 # Setting up the Database
-connection = sqlite3.connect("Database.db")
-cursor = connection.cursor()
 
-# Student Details Table
-student_table = """CREATE TABLE IF NOT EXISTS StudentDetails (
-                    StudentID INTEGER PRIMARY KEY AUTOINCREMENT,
-                    StudentName TEXT NOT NULL,
-                    Gender TEXT,
-                    Age INTEGER,
-                    Contact INTEGER,
-                    Course TEXT,
-                    Email TEXT UNIQUE NOT NULL,
-                    Pass TEXT NOT NULL,
-                    img BLOB
-                )"""
+try:
+    connection = sqlite3.connect("Database.db")
+    cursor = connection.cursor()
 
-# Admin Details Table
-admin_table = """CREATE TABLE IF NOT EXISTS AdminDetails (
-                    AdminID TEXT PRIMARY KEY,
-                    AdminName TEXT NOT NULL,
-                    Email TEXT UNIQUE NOT NULL,
-                    Pass TEXT NOT NULL,
-                    img BLOB
-                )"""
+    # Student Details Table
+    student_table = """CREATE TABLE IF NOT EXISTS StudentDetails (
+                        StudentID INTEGER PRIMARY KEY AUTOINCREMENT,
+                        StudentName TEXT NOT NULL,
+                        Gender TEXT,
+                        Age INTEGER,
+                        Contact INTEGER,
+                        Course TEXT,
+                        Email TEXT UNIQUE NOT NULL,
+                        Pass TEXT NOT NULL DEFAULT 'user@123',
+                        img BLOB
+                    )"""
 
-# connection.execute("DROP TABLE StudentDetails")
-# connection.execute("DROP TABLE AdminDetails")
+    # Admin Details Table
+    admin_table = """CREATE TABLE IF NOT EXISTS AdminDetails (
+                        AdminID TEXT PRIMARY KEY,
+                        AdminName TEXT NOT NULL,
+                        Email TEXT UNIQUE NOT NULL,
+                        Pass TEXT NOT NULL,
+                        img BLOB
+                    )"""
 
-# Creating Table If table doesn't exist
-connection.execute(student_table)
-connection.execute(admin_table)
+    # connection.execute("DROP TABLE StudentDetails")
+    # connection.execute("DROP TABLE AdminDetails")
 
-# Fetching list of tables in the database
-cursor.execute("SELECT seq FROM sqlite_sequence WHERE name='StudentDetails'")
-result = cursor.fetchone()
+    # Creating Table If table doesn't exist
+    connection.execute(student_table)
+    connection.execute(admin_table)
 
-# Setting Autoincrement value as SQLite doesn't provide Autoincrement within the table 
-if result is None:
-    connection.execute("INSERT INTO sqlite_sequence (name, seq) VALUES ('StudentDetails', 999);")
+    # Fetching list of tables in the database
+    cursor.execute("SELECT seq FROM sqlite_sequence WHERE name='StudentDetails'")
+    result = cursor.fetchone()
 
-connection.commit()
-cursor.close()
-connection.close()
+    # Setting Autoincrement value as SQLite doesn't provide Autoincrement within the table 
+    if result is None:
+        connection.execute("INSERT INTO sqlite_sequence (name, seq) VALUES ('StudentDetails', 999);")
+
+    # Inserting Dummy Data in Student Table
+    cursor.execute("SELECT * FROM StudentDetails")
+    record = cursor.fetchone()
+    if not record:
+        with open(r".\assets\profile_pic.png", 'rb') as read_data:
+            pic_data = read_data.read()
+
+        students = [
+            ('DummyName1', 'DUMMY_GENDER', "20", "1234567890", 'C++', 'dummy1@gmail.com', '1234', pic_data),
+            ('DummyName2', 'DUMMY_GENDER', "21", "1234567891", 'Python', 'dummy2@gmail.com', '1234', pic_data),
+            ('DummyName3', 'DUMMY_GENDER', "22", "1234567892", 'Java', 'dummy3@gmail.com', '1234', pic_data),
+        ]
+        for values in students:
+            query = """INSERT INTO StudentDetails (StudentName, Gender, Age, Contact, Course, Email, Pass, img) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)"""
+            cursor.execute(query, values)
+
+    # Inserting Admin Data in Admin Table
+    cursor.execute("SELECT * FROM AdminDetails")
+    record = cursor.fetchone()
+    if not record:
+        pic_data = b''
+        # Open the selected image
+        img = Image.open(r".\assets\admin_pic.jpg").resize((135, 135))
+        # Create a circular mask
+        mask = Image.new("L", img.size, 0)
+        draw = ImageDraw.Draw(mask)
+        draw.ellipse((0, 0) + img.size, fill=255)
+
+        # Create a new image with transparency and apply the mask
+        rounded_img = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        rounded_img.paste(img, mask=mask)
+
+        buffer = BytesIO()
+        rounded_img.save(buffer, format='PNG')
+
+         # Get the binary data directly from the buffer
+        pic_data = buffer.getvalue()
+        # with open(r".\assets\admin_pic.jpg", 'rb') as read_data:
+        #     pic_data = read_data.read()
+        cursor.execute("""INSERT INTO AdminDetails (AdminID, AdminName, Email, Pass, img) 
+                        VALUES ("9891","Shivam Raj Gupta", "guptashivam25oct@gmail.com", "shivam@123", ?)""", (pic_data,))
+
+    connection.commit()
+except sqlite3.Error as e:
+    messagebox.showerror("Email Error", f"Failed to send email: {e}")
+
+finally:
+    cursor.close()
+    connection.close()
 
 # generating OTP
 def generate_otp(is_admin, user_id):
@@ -62,7 +112,6 @@ def generate_otp(is_admin, user_id):
     try:
         server = smtplib.SMTP('smtp.gmail.com', 587)
         server.starttls()
-
         from_mail = os.environ.get("GMail_ID") # hid the senders mail in Environment variable
         #print(from_mail)
         server.login(from_mail, os.environ.get("GMail_Pass For Sending Mail")) # hid the senders mail password in Environment variable
@@ -79,6 +128,7 @@ def generate_otp(is_admin, user_id):
         return otp, is_admin
 
 # Making widgets reuseable
+
 #button
 class CustomButton(ctk.CTkButton):
     def __init__(self, master, text, command=None, **kwargs):
@@ -90,6 +140,7 @@ class CustomButton(ctk.CTkButton):
             corner_radius=18,
             cursor = "hand2"
         )
+
 # other button 
 class OtherButton(ctk.CTkButton):
     def __init__(self, master, text, command=None, **kwargs):
@@ -126,7 +177,6 @@ class CustomEntry(ctk.CTkEntry):
             **kwargs
         )
 
-
 def main():
     app = Application()
     app.mainloop()
@@ -134,7 +184,7 @@ def main():
 class Application(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.geometry("500x600")
+        self.geometry("500x600+500+80")
         self.resizable(False, False)
         ctk.set_appearance_mode("dark")
         self.title("Login")
@@ -142,19 +192,27 @@ class Application(ctk.CTk):
 
         # Setting Background Image
         background_image = ctk.CTkImage(
-            light_image=Image.open(r".\assets\background_img1.png").filter(ImageFilter.GaussianBlur(6)), 
+            light_image=Image.open(r".\assets\bg_img.png").filter(ImageFilter.GaussianBlur(6)), 
             size=(500, 600)
         )
         #placing Background Image
         self.bg_label = ctk.CTkLabel(master=self, image=background_image, text="")
         self.bg_label.pack()
 
+        #credit
+        # myLabel = ctk.CTkLabel(master=self, text="Made by: Shivam Raj Gupta",
+        #                        font=("Bookman Old Style", 25,'bold', 'italic', 'underline'),
+        #                        fg_color="#8FD3EE",
+        #                        bg_color="#8FD3EE",
+        #                        text_color='#113C4D')
+        # myLabel.place(x=70,y=560)
+
         # Initialize the Window frame
         self.window_frame = Window(self.bg_label, self)
 
 class Window(ctk.CTkFrame):
     def __init__(self, parent, app):
-        super().__init__(master=parent, width=320, height=350, fg_color="#2E2F33", bg_color="#676767", corner_radius=22)
+        super().__init__(master=parent, width=320, height=350, fg_color="#2E2F33", bg_color="#BDE4F7", corner_radius=22)
         self.app = app
 
         #functions
@@ -194,7 +252,7 @@ class Window(ctk.CTkFrame):
 
 class Add_account_Window(ctk.CTkFrame):
     def __init__(self, parent, app):
-        super().__init__(master=parent, width=320, height=350, fg_color="#2E2F33", bg_color="#676767", corner_radius=22)
+        super().__init__(master=parent, width=320, height=350, fg_color="#2E2F33", bg_color="#BDE4F7", corner_radius=22)
         self.app = app
 
         def AddAdmin():
@@ -233,7 +291,7 @@ class Add_account_Window(ctk.CTkFrame):
 
 class login_Window(ctk.CTkFrame):
     def __init__(self, parent, app):
-        super().__init__(master=parent, width=320, height=350, fg_color="#2E2F33", bg_color="#676767", corner_radius=22)
+        super().__init__(master=parent, width=320, height=350, fg_color="#2E2F33", bg_color="#BDE4F7", corner_radius=22)
         self.app = app
 
         def Admin_Login():
@@ -272,7 +330,7 @@ class login_Window(ctk.CTkFrame):
 
 class Add_admin_account(ctk.CTkFrame):
     def __init__(self, parent, app):
-        super().__init__(master=parent, width=320, height=510, fg_color="#2E2F33", bg_color="#676767", corner_radius=22)
+        super().__init__(master=parent, width=320, height=510, fg_color="#2E2F33", bg_color="#BDE4F7", corner_radius=22)
         self.app = app
 
         pic_path = tk.StringVar()
@@ -318,23 +376,22 @@ class Add_admin_account(ctk.CTkFrame):
                 rounded_img = Image.new("RGBA", img.size, (0, 0, 0, 0))
                 rounded_img.paste(img, mask=mask)
 
-                # Save the rounded image temporarily
-                rounded_img.save('temp_pic.png')
+                buffer = BytesIO()
+                rounded_img.save(buffer, format='PNG')
 
-                # Read the binary data from the saved rounded image
-                with open('temp_pic.png', 'rb') as read_data:
-                    pic_data = read_data.read()
+                # Get the binary data directly from the buffer
+                pic_data = buffer.getvalue()
             else:
                 # If no custom image, load the default profile picture
                 with open(r".\assets\profile_pic.png", 'rb') as read_data:
                     pic_data = read_data.read()
 
 
-            admin_code = self.AdminCode_entry.get()
-            admin_id = self.AdminID_entry.get()
-            admin_name = self.Name_entry.get()
-            email = self.email_entry.get()
-            password = self.createPass_entry.get()
+            admin_code = self.AdminCode_entry.get().strip()
+            admin_id = self.AdminID_entry.get().strip()
+            admin_name = self.Name_entry.get().lower().strip()
+            email = self.email_entry.get().lower().strip()
+            password = self.createPass_entry.get().strip()
             pic_data = pic_data
 
             if admin_code == '' or admin_id == '' or admin_name == '' or email == '' or password =='':
@@ -411,7 +468,7 @@ class Add_admin_account(ctk.CTkFrame):
 
 class Add_user_account(ctk.CTkFrame):
     def __init__(self, parent, app):
-        super().__init__(master=parent, width=480, height=520, fg_color="#2E2F33", bg_color="#676767", corner_radius=22)
+        super().__init__(master=parent, width=480, height=520, fg_color="#2E2F33", bg_color="#BDE4F7", corner_radius=22)
         self.app = app
 
         pic_path = tk.StringVar()
@@ -456,24 +513,23 @@ class Add_user_account(ctk.CTkFrame):
                 rounded_img = Image.new("RGBA", img.size, (0, 0, 0, 0))
                 rounded_img.paste(img, mask=mask)
 
-                # Save the rounded image temporarily
-                rounded_img.save('temp_pic.png')
+                buffer = BytesIO()
+                rounded_img.save(buffer, format='PNG')
 
-                # Read the binary data from the saved rounded image
-                with open('temp_pic.png', 'rb') as read_data:
-                    pic_data = read_data.read()
+                # Get the binary data directly from the buffer
+                pic_data = buffer.getvalue()
             else:
                 # If no custom image, load the default profile picture
                 with open(r".\assets\profile_pic.png", 'rb') as read_data:
                     pic_data = read_data.read()
 
-            stud_name = self.stud_name_entry.get()
+            stud_name = self.stud_name_entry.get().lower().strip()
             gender = combobox_var.get()
             age = self.age_entry.get()
-            phone_no = self.phone_entry.get()
+            phone_no = self.phone_entry.get().strip()
             course = course_var.get()
-            email = self.email_entry.get()
-            password = self.createPass_entry.get()
+            email = self.email_entry.get().lower().strip()
+            password = self.createPass_entry.get().strip()
             pic_data = pic_data
 
             if stud_name == '' or gender == "Gender" or age == '' or phone_no == '' or course =='Course' or email=='' or password == '':
@@ -506,8 +562,8 @@ class Add_user_account(ctk.CTkFrame):
                         cursor.close()
                         conn.close()
                         self.place_forget()
-                        self.app.user_login_frame = UserLogin(self.app.bg_label, self.app)
-                        self.app.user_login_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+                        self.app.studentCard_frame = StudentCard(self.app.bg_label, self.app, self.email_entry.get().lower().strip())
+                        self.app.studentCard_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
                 except Exception as e:
                     messagebox.showerror("Database Error", f"An error occurred: {e}")
 
@@ -540,6 +596,7 @@ class Add_user_account(ctk.CTkFrame):
                                                 button_hover_color="#144870",
                                                 text_color="black",
                                                 font=("Century Gothic", 12, 'bold'),
+                                                state= 'readonly',
                                                 variable=combobox_var)
         gender_comboBox.place(x=250, y=160)
 
@@ -560,6 +617,7 @@ class Add_user_account(ctk.CTkFrame):
                                                 button_hover_color="#144870",
                                                 text_color="#A4A6AC",
                                                 font=("Century Gothic", 12, 'bold'),
+                                                state= 'readonly',
                                                 variable=course_var)
         course_comboBox.place(x=10, y=280)
 
@@ -577,14 +635,120 @@ class Add_user_account(ctk.CTkFrame):
 
         self.place(relx=0.5, rely=0.5, anchor=tk.CENTER)  # Center the frame
 
+# Student Card
+class StudentCard(ctk.CTkFrame):
+    def __init__(self, parent, app, email_id):
+        super().__init__(master=parent, width=420, height=520, fg_color="#2E2F33")
+        self.app = app
+        self.email_id = email_id
+        #functions
+
+        def save_card():
+            # Prompt user to select save location and file name
+            save_path = filedialog.asksaveasfilename(defaultextension=".png", filetypes=[("PNG files", "*.png"), ("All files", "*.*")])
+            if save_path:
+                # Get the bounding box of the widget
+                x = self.winfo_rootx()
+                y = self.winfo_rooty()
+                width = self.winfo_width()
+                height = self.winfo_height()
+                
+                # Capture the screen area of the widget
+                img = ImageGrab.grab(bbox=(x, y, x + width, y + height))
+                # Save the image
+                img.save(save_path)
+                messagebox.showinfo(message="Student card saved")
+
+        def DeleteWindow(event):
+            # self.app.destroy()
+            self.place_forget()
+            self.app.window_frame = Window(self.app.bg_label, self.app)
+            self.app.window_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+
+        heading_label = ctk.CTkLabel(master=self, text="Student Card", font=("Century Gothic", 28, 'bold'))
+        heading_label.place(x=100, y=22)
+
+        conn = sqlite3.connect('database.db')
+        cursor = conn.cursor()
+        query = "SELECT * FROM StudentDetails WHERE Email = ?"
+        values = (self.email_id,)
+        cursor.execute(query, values)
+        record = cursor.fetchone()
+        conn.commit()
+        cursor.close()
+        conn.close()
+        stud_id = record[0]
+        stud_name = record[1].capitalize()
+        stud_gender = record[2].capitalize()
+        stud_age = record[3]
+        stud_phone = record[4]
+        stud_course = record[5].capitalize()
+        stud_email = record[6]
+        img_data = record[8]
+        # Convert BLOB data to an image
+        img = Image.open(io.BytesIO(img_data))
+        img = img.resize((150, 150), Image.LANCZOS)  # Resize with LANCZOS for quality downsampling
+        ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(135, 135))  # Convert to CTkImage
+        label = ctk.CTkLabel(master=self, image=ctk_img, text="", fg_color="transparent")  # Set transparent color
+        label.place(x=145, y=65)
+
+        # name_label = ctk.CTkLabel(self, text=f"Student Name: {stud_id}", anchor="w")
+        # name_label.place(x=110, y=100)
+
+        id_label = ctk.CTkLabel(self, text="Student ID: ", font=("Century Gothic", 18, 'bold'))
+        name_label = ctk.CTkLabel(self, text="Name: ", font=("Century Gothic", 18, 'bold'))
+        gender_label = ctk.CTkLabel(self, text="Gender: ", font=("Century Gothic", 18, 'bold'))
+        age_label = ctk.CTkLabel(self, text="Age: ", font=("Century Gothic", 18, 'bold'))
+        phone_label = ctk.CTkLabel(self, text="Phone No.: ", font=("Century Gothic", 18, 'bold'))
+        course_label = ctk.CTkLabel(self, text="Course: ", font=("Century Gothic", 18, 'bold'))
+        email_label = ctk.CTkLabel(self, text="Email: ", font=("Century Gothic", 18, 'bold'))
+        
+        id = ctk.CTkLabel(self, text=f"{stud_id}", font=("Century Gothic", 18))
+        name = ctk.CTkLabel(self, text=f"{stud_name}", font=("Century Gothic", 18))
+        gender = ctk.CTkLabel(self, text=f"{stud_gender}", font=("Century Gothic", 18))
+        age = ctk.CTkLabel(self, text=f"{stud_age}", font=("Century Gothic", 18))
+        phone = ctk.CTkLabel(self, text=f"{stud_phone}", font=("Century Gothic", 18))
+        course = ctk.CTkLabel(self, text=f"{stud_course}", font=("Century Gothic", 18))
+        email = ctk.CTkLabel(self, text=f"{stud_email}", font=("Century Gothic", 18))
+        
+        
+        id_label.place(x=15, y = 230)
+        name_label.place(x=15, y = 258)
+        gender_label.place(x=15, y = 288)
+        age_label.place(x=15, y = 318)
+        phone_label.place(x=15, y = 348)
+        course_label.place(x=15, y = 378)
+        email_label.place(x=15, y = 408)
+        
+        
+        id.place(x=130, y = 230)
+        name.place(x=130, y = 258)
+        gender.place(x=130, y = 288)
+        age.place(x=130, y = 318)
+        phone.place(x=130, y = 348)
+        course.place(x=130, y = 378)
+        email.place(x=130, y = 408)
+
+        save_card_button = CustomButton(master=self, text="Save Card", command=save_card)
+        save_card_button.place(x=80, y=455)
+
+        # Setting Cross Icon on frame
+        delete_window_Img = ctk.CTkImage(light_image=Image.open(r".\assets\delete_window.png"), size=(30, 30))
+        delete_window_Img_label = ctk.CTkLabel(master=self, image=delete_window_Img, text="", fg_color="#2E2F33", cursor= "hand2")
+        delete_window_Img_label.bind("<Button-1>",DeleteWindow)
+        delete_window_Img_label.place(x=390, y=50, anchor="se")
+        # n, ne, e, se, s, sw, w, nw, or center
+
+        self.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+
 class AdminLogin(ctk.CTkFrame):
     def __init__(self, parent, app):
-        super().__init__(master=parent, width=320, height=350, fg_color="#2E2F33", bg_color="#676767", corner_radius=22)
+        super().__init__(master=parent, width=320, height=350, fg_color="#2E2F33", bg_color="#BDE4F7", corner_radius=22)
         self.app = app
 
         # Functions
         def login():
-            username = self.user_entry.get()
+            username = self.user_entry.get().lower().strip()
             password = self.pass_entry.get()
 
             if username == '' or password == '':
@@ -610,7 +774,7 @@ class AdminLogin(ctk.CTkFrame):
                             conn.close()
                             self.app.withdraw()
                             import AdminDashboard
-                            AdminDashboard.DashboardWindow(self.app)
+                            AdminDashboard.DashboardWindow(self.app,username)
                         else:
                             messagebox.showerror("Error!!",'Wrong Credentials')
                     else:
@@ -642,7 +806,7 @@ class AdminLogin(ctk.CTkFrame):
         l1= ctk.CTkLabel(master= self, text = "Login as Admin", font=("Times New Roman", 22))
         l1.place(x=160, y=120, anchor = tk.CENTER)
 
-        self.user_entry = CustomEntry(master=self, placeholder_text="Email")
+        self.user_entry = CustomEntry(master=self, placeholder_text="AdminID or Email")
         self.user_entry.place(x=50, y=150)
 
         self.pass_entry = CustomEntry(master=self, placeholder_text="Password", show='*')
@@ -664,12 +828,12 @@ class AdminLogin(ctk.CTkFrame):
 
 class UserLogin(ctk.CTkFrame):
     def __init__(self, parent, app):
-        super().__init__(master=parent, width=320, height=350, fg_color="#2E2F33", bg_color="#676767", corner_radius=22)
+        super().__init__(master=parent, width=320, height=350, fg_color="#2E2F33", bg_color="#BDE4F7", corner_radius=22)
         self.app = app
 
         # Functions
         def login():
-            username = self.user_entry.get()
+            username = self.user_entry.get().lower().strip()
             password = self.pass_entry.get()
 
             if username == '' or password == '':
@@ -695,7 +859,7 @@ class UserLogin(ctk.CTkFrame):
                             conn.close()
                             self.app.withdraw()  # Hide login window
                             import UserDashboard  # Import here to avoid circular import
-                            UserDashboard.DashboardWindow(self.app)  # Pass 'self.app' as argument
+                            UserDashboard.DashboardWindow(self.app, username)  # Pass 'self.app' as argument
                         else:
                             messagebox.showerror("Error!!",'Wrong Credentials')
                     else:
@@ -727,7 +891,7 @@ class UserLogin(ctk.CTkFrame):
         l1= ctk.CTkLabel(master= self, text = "Login as User", font=("Times New Roman", 22))
         l1.place(x=160, y=125, anchor = tk.CENTER)
 
-        self.user_entry = CustomEntry(master=self, placeholder_text="Email")
+        self.user_entry = CustomEntry(master=self, placeholder_text="Student ID or Email")
         self.user_entry.place(x=50, y=150)
 
         self.pass_entry = CustomEntry(master=self, placeholder_text="Password", show='*')
@@ -749,12 +913,12 @@ class UserLogin(ctk.CTkFrame):
 
 class FindAccount(ctk.CTkFrame):
     def __init__(self, parent, app, is_admin=False):
-        super().__init__(master=parent, width=320, height=350, fg_color="#2E2F33", bg_color="#676767", corner_radius=22)
+        super().__init__(master=parent, width=320, height=350, fg_color="#2E2F33", bg_color="#BDE4F7", corner_radius=22)
         self.app = app
         self.is_admin = is_admin
 
         def Continue():
-            self.user_id = self.email_entry.get()
+            self.user_id = self.email_entry.get().lower().strip()
             if self.user_id =='':
                 messagebox.showerror("Error!","Please Enter EMail-ID")
             else:
@@ -821,7 +985,7 @@ class FindAccount(ctk.CTkFrame):
 
 class OTPEntry(ctk.CTkFrame):
     def __init__(self, parent, app, otp, user_id, is_admin = False):
-        super().__init__(master=parent, width=320, height=350, fg_color="#2E2F33", bg_color="#676767", corner_radius=22)
+        super().__init__(master=parent, width=320, height=350, fg_color="#2E2F33", bg_color="#BDE4F7", corner_radius=22)
         self.app = app
 
         self.user_id = user_id
@@ -829,7 +993,7 @@ class OTPEntry(ctk.CTkFrame):
         self.is_admin = is_admin
 
         def verify_otp():
-            input_opt = self.otp_entry.get()
+            input_opt = self.otp_entry.get().strip()
             if input_opt == self.otp or self.is_admin:
                 messagebox.showinfo(message="OTP Verified")
                 self.place_forget()
@@ -865,15 +1029,15 @@ class OTPEntry(ctk.CTkFrame):
 
 class ResetPassword(ctk.CTkFrame):
     def __init__(self, parent, app, user_id, is_admin = False):
-        super().__init__(master=parent, width=320, height=350, fg_color="#2E2F33", bg_color="#676767", corner_radius=22)
+        super().__init__(master=parent, width=320, height=350, fg_color="#2E2F33", bg_color="#BDE4F7", corner_radius=22)
         self.app = app
 
         self.user_id = user_id
         self.is_admin = is_admin
 
         def reset_password():
-            passwrd = self.newPass_entry1.get()
-            passwrd_repeat = self.newPass_entry2.get()
+            passwrd = self.newPass_entry1.get().strip()
+            passwrd_repeat = self.newPass_entry2.get().strip()
 
             if passwrd == '' or passwrd_repeat == '':
                 messagebox.showerror("Error!", "Field is required")
