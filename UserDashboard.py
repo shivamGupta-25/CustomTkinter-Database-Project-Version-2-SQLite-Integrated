@@ -1,6 +1,6 @@
 import tkinter as tk
 import customtkinter as ctk
-from login_system import Window  # Import Window class from testinglogin.py
+from login_system import Window, UserLogin  # Import Window class from testinglogin.py
 import sqlite3
 from PIL import Image, ImageGrab, ImageDraw
 import io
@@ -77,11 +77,13 @@ class DashboardWindow(ctk.CTkToplevel):
         #self.userid = '1000'
         self.userid = username
         #print(self.userid)
-        self.geometry("500x440+550+100") #500x410
+        self.geometry("500x410+650+200") #500x410 #For Window # 500x440 if credit label is present
         self.title("Student Dashboard")
         self.resizable(False, False)
         #app.iconbitmap(r'.\assets\dashboard.ico')
         #print(font.families())
+
+        # # Credit label
         # myLabel = ctk.CTkLabel(master=self, text="Made by: Shivam Raj Gupta",text_color="#C0E6F8", font=("Bookman Old Style", 25,'bold', 'italic', 'underline'))
         # myLabel.pack(side = tk.BOTTOM)
 
@@ -120,8 +122,19 @@ class DashboardWindow(ctk.CTkToplevel):
         delete_account_button.place(y=280)
         self.button_refs["delete_account"] = delete_account_button  # Store reference
 
-        logout_button = CustomButton(master=options_frame, text="Logout", command=self.logout)
-        logout_button.place(y=330)
+        logout_button = ctk.CTkButton(master=options_frame,
+                                      text="Logout",    
+                                      font=("Century Gothic", 15, 'bold'),
+                                      fg_color="#292929",
+                                      #border_spacing=10,
+                                      width=80, 
+                                      height=50,
+                                      corner_radius=50,
+                                      hover_color="#242424",
+                                      cursor="hand2",
+                                      command=self.logout)
+
+        logout_button.place(x=24,y=330)
 
         # Page frame where content will be displayed
         self.pages_frame = ctk.CTkFrame(master=dashboard_frame, width=318, height=390)
@@ -189,7 +202,7 @@ class DashboardWindow(ctk.CTkToplevel):
         
         
         id_label.place(x=15, y = 170)
-        name_label.place(x=160, y= 65)
+        name_label.place(x=150, y= 50)
         name_label2.place(x=15, y= 200)
         gender_label.place(x=15, y = 230)
         age_label.place(x=15, y = 260)
@@ -199,7 +212,7 @@ class DashboardWindow(ctk.CTkToplevel):
         
         
         id.place(x=130, y = 170)
-        name.place(x=190, y = 65)
+        name.place(x=150, y = 80)
         name2.place(x=130, y = 200)
         gender.place(x=130, y = 230)
         age.place(x=130, y = 260)
@@ -319,6 +332,9 @@ class DashboardWindow(ctk.CTkToplevel):
                 cursor.close()
                 conn.close()
                 messagebox.showinfo(message="Password Changed!")
+                self.destroy()  # Close the dashboard window
+                self.app.deiconify()  # Show the main application window (login)
+                UserLogin(self.app.bg_label, self.app)  # Reopen the login window
             else:
                 messagebox.showerror(message="Current Pass doesn't Match")
 

@@ -7,6 +7,7 @@ from tkinter import messagebox
 import threading
 import time
 import os
+import re
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import smtplib
@@ -26,47 +27,6 @@ def AdminData(user_id):
     return data
 
 # Function to send an email
-def send_email(subject, body, recipients):
-
-    exclude_emails = ['dummy1@gmail.com', 'dummy2@gmail.com', 'dummy3@gmail.com']  # Replace with the emails you want to exclude
-    # Filter out the excluded emails from recipients
-    recipients = [recipient for recipient in recipients if recipient not in exclude_emails]
-
-    sender_email = os.environ.get("GMail_ID")  # Replace with your email
-    sender_password = os.environ.get("GMail_Pass For Sending Mail")  # Replace with your email password
-
-    msg = MIMEMultipart()
-    msg['From'] = sender_email
-    msg['Subject'] = subject
-    msg.attach(MIMEText(body, 'plain'))
-    try:
-        with smtplib.SMTP('smtp.gmail.com', 587) as server:
-            server.starttls()
-            server.login(sender_email, sender_password)
-
-            for idx, recipient in enumerate(recipients):
-                # Update status for progress bar
-                status_label.configure(text=f"Sending to: {recipient}")  # Update status label
-                progress_var.set(0)  # Reset progress for each email
-                progress_window.update_idletasks()  # Refresh the GUI
-
-                # Send email
-                server.sendmail(sender_email, recipient, msg.as_string())
-
-                # Update progress incrementally
-                for progress in range(10, 101, 10):  # Increment in steps to visualize progress
-                    progress_var.set(progress)  # Update progress to percentage
-                    time.sleep(0.1)  # Short delay to visualize the progress
-                    progress_window.update_idletasks()  # Refresh the GUI
-
-        # Close the progress window after sending all emails
-        progress_window.destroy()
-        messagebox.showinfo("Success", "All announcements sent successfully!")
-
-    except Exception as e:
-        #print(f"Failed to send email: {e}")
-        messagebox.showerror("Email Error", f"Failed to send email: {e}")
-        progress_window.destroy()  # Close the progress window in case of error
 
 class CustomButton(ctk.CTkButton):
     def __init__(self, master, text, command=None, **kwargs):
@@ -116,7 +76,7 @@ class DashboardWindow(ctk.CTkToplevel):
         #self.userid = 'guptashivam25oct@gmail.com'
         self.userid = username
         #print(self.userid)
-        self.geometry("930x580+100+50")
+        self.geometry("930x580+250+50")
         self.title("Student Dashboard")
         self.resizable(False, False)
         #app.iconbitmap(r'.\assets\dashboard.ico')
@@ -158,8 +118,18 @@ class DashboardWindow(ctk.CTkToplevel):
         announcement_button.grid(row=1, column=2, sticky="ew")
         self.button_refs["announcement"] = announcement_button  # Store reference
 
-        logout_button = CustomButton(master=options_frame, text="Logout", command=self.logout)
-        logout_button.grid(row=1, column=3, sticky="ew")
+        logout_button = ctk.CTkButton(master=options_frame,
+                                      text="Logout", 
+                                      font=("Century Gothic", 25),
+                                      fg_color="#292929",
+                                      #border_spacing=10,
+                                      width=90, 
+                                      height=50,
+                                      corner_radius=50,
+                                      hover_color="#242424",
+                                      cursor="hand2",
+                                      command=self.logout)
+        logout_button.grid(row=1, column=3,padx=15, sticky="ew")
 
         #Page frame where content will be displayed
         self.pages_frame = ctk.CTkFrame(master=dashboard_frame, width=910, height=395,
@@ -209,8 +179,7 @@ class DashboardWindow(ctk.CTkToplevel):
         pic_frame.grid_propagate(False)
         pic_frame.grid(row=0, column=0, padx=5, pady=5)
 
-        img = Image.open(io.BytesIO(img_data))
-        img = img.resize((150, 150), Image.LANCZOS)
+        img = Image.open(io.BytesIO(img_data)).resize((150, 150), Image.LANCZOS)
         ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(135, 135))
         
         label = ctk.CTkLabel(master=pic_frame, image=ctk_img, text="", fg_color="transparent")
@@ -250,25 +219,44 @@ class DashboardWindow(ctk.CTkToplevel):
         l1 = ctk.CTkLabel(master=data_frame, text="Number of Student by Course", font=("Times New Roman", 30, 'bold', 'underline'))
         l1.grid(row=0, column=0, columnspan=3, padx=5, pady=5, sticky="nsew")
 
+        excluded_emails = ['dummy1@gmail.com', 'dummy2@gmail.com', 'dummy3@gmail.com']
+        
         conn = sqlite3.connect("database.db")
         cursor = conn.cursor()
-        query = "SELECT COUNT(*), Course FROM StudentDetails GROUP BY Course"
-        cursor.execute(query)
+
+        cursor.execute("SELECT DISTINCT Course FROM StudentDetails")
+        course_list = [row[0] for row in cursor.fetchall()]
+
+        # Prepare SQL query to exclude emails in the list
+        placeholders = ', '.join('?' for email in excluded_emails)
+        query = f"""
+            SELECT COUNT(*), Course 
+            FROM StudentDetails 
+            WHERE Email NOT IN ({placeholders})
+            GROUP BY Course
+        """
+        cursor.execute(query, excluded_emails)
         records = cursor.fetchall()
+
+        # Close the database connection
         conn.commit()
         cursor.close()
         conn.close()
 
-        if not records:
-            no_data_label = ctk.CTkLabel(master=data_frame, text="No records found", font=("Century Gothic", 22, 'bold'))
-            no_data_label.grid(row=1, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
-        else:
-            for index, (count, course) in enumerate(records):
-                course_label = ctk.CTkLabel(master=data_frame, text=f"{course}", font=("Century Gothic", 22, 'bold', 'italic'))
-                course_label.grid(row=1, column=index, padx=10, pady=10, sticky="nsew")
+        # Create a dictionary to map course names to student counts
+        course_counts = {course: 0 for course in course_list}  # Initialize all counts to 0
 
-                count_stud_label = ctk.CTkLabel(master=data_frame, text=f"{count}", font=("Century Gothic", 25, 'bold'))
-                count_stud_label.grid(row=2, column=index, padx=10, pady=10, sticky="nsew")
+        # Update counts based on fetched records
+        for count, course in records:
+            course_counts[course] = count
+
+        # Display course names and their counts
+        for index, course in enumerate(course_list):
+            course_label = ctk.CTkLabel(master=data_frame, text=f"{course}", font=("Century Gothic", 22, 'bold', 'italic'))
+            course_label.grid(row=1, column=index, padx=10, pady=10, sticky="nsew")
+
+            count_stud_label = ctk.CTkLabel(master=data_frame, text=f"{course_counts[course]}", font=("Century Gothic", 25, 'bold'))
+            count_stud_label.grid(row=2, column=index, padx=10, pady=10, sticky="nsew")
 
 #-------------------------------------------------------------------------------------
 
@@ -277,9 +265,15 @@ class DashboardWindow(ctk.CTkToplevel):
         self.set_active_button("manage")  # Use the key to set the active button
 
         def treeview_data():
+            excluded_emails = ['dummy1@gmail.com', 'dummy2@gmail.com', 'dummy3@gmail.com']  # Emails to exclude
+
             conn = sqlite3.connect('database.db')
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM StudentDetails")
+
+            # Create placeholders for the excluded emails
+            placeholders = ', '.join('?' for _ in excluded_emails)
+            query = f"SELECT * FROM StudentDetails WHERE Email NOT IN ({placeholders})"
+            cursor.execute(query, excluded_emails)
             data = cursor.fetchall()
             conn.commit()
             cursor.close()
@@ -302,6 +296,7 @@ class DashboardWindow(ctk.CTkToplevel):
                     phoneEntry.insert(0,row[4])
                     course_var.set(row[5])
                     emailEntry.insert(0,row[6])
+                    #print(selected_item)
         def delete_student():
             if tree.winfo_exists():  # Check if the Treeview widget still exists
                 selected_item = tree.selection()
@@ -346,6 +341,7 @@ class DashboardWindow(ctk.CTkToplevel):
 
         def show_all():
             treeview_data()
+            clear()
             searchEntry.delete(0,'end')
             search_box.set('Search By')
 
@@ -376,7 +372,6 @@ class DashboardWindow(ctk.CTkToplevel):
                 for student in record:
                     tree.insert('',"end",values=student)
 
-
         def update_student():
             selected_item = tree.selection()
             if not selected_item:
@@ -404,7 +399,6 @@ class DashboardWindow(ctk.CTkToplevel):
                 clear()
                 messagebox.showinfo("Update",message="Data updated successfully")
 
-
         def add_student():
             id = idEntry.get().strip()
             name = nameEntry.get().strip()
@@ -416,7 +410,7 @@ class DashboardWindow(ctk.CTkToplevel):
 
             if id == '' or name == '' or gender =='Gender' or age == '' or phone =='' or course =='Course' or email =='':
                 messagebox.showerror("Error",message="All fields are required")
-            elif not email.endswith("@gmail.com"):
+            elif not re.match(r"[^@]+@[^@]+\.[^@]+", email):
                 messagebox.showerror("Error",message="Enter Valid Email")
             elif len(phone) != 10:
                 messagebox.showerror("Error",message="Enter Valid Phone Number")
@@ -563,7 +557,7 @@ class DashboardWindow(ctk.CTkToplevel):
 
         treeview_data()
 
-        self.bind('<ButtonRelease>',selection)
+        tree.bind('<ButtonRelease>',selection)
 
         button_frame = ctk.CTkFrame(master=manage_frame, fg_color='#2B2B2B')
         button_frame.grid(row=1, column=0, columnspan = 2)
@@ -590,6 +584,53 @@ class DashboardWindow(ctk.CTkToplevel):
         announcement_frame.grid_propagate(False)
         announcement_frame.grid(row=0, column=0)
 
+        def send_email(subject, body, recipients):
+            if not recipients:
+                messagebox.showwarning("No Recipients", "No email addresses found for the selected courses.")
+                return
+            
+            sender_email = os.environ.get("GMail_ID")
+            sender_password = os.environ.get("GMail_Pass")
+
+            msg = MIMEMultipart()
+            msg['From'] = sender_email
+            msg['Subject'] = subject
+            msg.attach(MIMEText(body, 'plain'))
+            
+            total_recipients = len(recipients)
+
+            try:
+                with smtplib.SMTP('smtp.gmail.com', 587) as server:
+                    server.starttls()
+                    server.login(sender_email, sender_password)
+
+                    for idx, recipient in enumerate(recipients, start=1):
+                        # Reset progress bar for each email
+                        progress_var.set(0)
+                        status_label.configure(text=f"Sending to: {recipient}")
+
+                        # Send the email
+                        server.sendmail(sender_email, recipient, msg.as_string())
+
+                        # Update progress incrementally for each recipient
+                        progress_var.set((idx / total_recipients) * 100)
+                        time.sleep(0.05)  # Small delay for visualization
+                        progress_window.update_idletasks()
+
+                progress_window.destroy()
+                messagebox.showinfo("Success", "All announcements sent successfully!")
+
+                # Reset UI elements after successful email sending
+                subject_entry.delete(0, 'end')
+                text_area.delete("0.0", "end")
+                text_area.insert("0.0", "Write Announcement")
+                for var in language_vars:
+                    var.set(False)
+            except Exception as e:
+                messagebox.showerror("Email Error", f"Failed to send email: {e}")
+                progress_window.destroy()
+
+
         def announce():
             subject = subject_entry.get().strip()
             body = text_area.get("0.0", "end").strip()
@@ -597,59 +638,49 @@ class DashboardWindow(ctk.CTkToplevel):
             if not subject or not body:
                 messagebox.showwarning("Input Error", "Please fill in both subject and announcement body.")
                 return
-            
+
             selected_courses = [languages[idx][0] for idx, var in enumerate(language_vars) if var.get()]
-            #print(selected_courses)
             if not selected_courses:
                 messagebox.showwarning("No Course Selected", "Please select at least one course to announce.")
                 return
-            # Fetching emails
+
+            # Fetching emails from the database
             conn = sqlite3.connect('database.db')
             cursor = conn.cursor()
-            all_emails=[]
+            all_emails = []
             for course in selected_courses:
                 cursor.execute("SELECT Email FROM StudentDetails WHERE Course = ?", (course,))
                 emails = cursor.fetchall()
-                # print(emails)
-                for email_tuple in emails:
-                    all_emails.append(email_tuple[0])
-            #print(all_emails)
+                all_emails.extend(email[0] for email in emails)
             cursor.close()
             conn.close()
 
-            if all_emails:
+            # Filter out excluded emails
+            exclude_emails = ['dummy1@gmail.com', 'dummy2@gmail.com', 'dummy3@gmail.com']
+            valid_emails = [email for email in all_emails if email not in exclude_emails]
+
+            if valid_emails:
                 # Create a new window for the progress bar
-                global progress_window
+                global progress_window, progress_var, status_label
                 progress_window = ctk.CTkToplevel(self)
                 progress_window.title("Sending Emails")
-                progress_window.geometry("400x150")  # Increased size for better visibility
-                progress_window.attributes('-topmost', True)  # Ensure it stays on top
+                progress_window.geometry("400x150")
+                progress_window.attributes('-topmost', True)
 
-                global progress_var
                 progress_var = ctk.DoubleVar()
-                
-                global status_label
-                status_label = ctk.CTkLabel(master=progress_window, text="Starting...", font=("Century Gothic", 16))
-                status_label.pack(pady=(10, 0))  # Add label at the top
+                status_label = ctk.CTkLabel(progress_window, text="Starting...", font=("Century Gothic", 16))
+                status_label.pack(pady=(10, 0))
 
-                progress_bar = ctk.CTkProgressBar(master=progress_window, variable=progress_var, width=300)
+                progress_bar = ctk.CTkProgressBar(progress_window, variable=progress_var, width=300)
                 progress_bar.pack(pady=20, padx=20)
 
-                # Reset progress bar before sending emails
-                progress_var.set(0)  
-
                 # Start sending emails in a new thread to avoid freezing the GUI
-                threading.Thread(target=send_email, args=(subject, body, all_emails)).start()
-
-                # Reset the subject entry and checkboxes after sending
-                subject_entry.delete(0, 'end')  # Clear the subject entry
-                text_area.delete("0.0", "end")  # Clear the text area
-                text_area.insert("0.0", "Write Announcement")  # Reset the text area to default text
-                for var in language_vars:  # Uncheck all checkboxes
-                    var.set(False)
+                threading.Thread(target=send_email, args=(subject, body, valid_emails)).start()
             else:
-                messagebox.showwarning("No Emails", "No email addresses found for the selected courses.")
-
+                messagebox.showwarning("No Emails", "No valid email addresses found for the selected courses.")
+        
+        
+        
         frame1 = ctk.CTkFrame(master=announcement_frame, width=898, height=90,
                                    #fg_color='green',
                                    corner_radius=8)

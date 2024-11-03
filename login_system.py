@@ -8,11 +8,21 @@ import smtplib
 import os
 from tkinter.filedialog import askopenfilename
 import io
+import re
 from io import BytesIO
 Image.MAX_IMAGE_PIXELS = None
 
-# Setting up the Database
+def show_hide(pass_entry, button):
+    # Check the current show option to toggle
+    if pass_entry.cget('show') == '*':
+        pass_entry.configure(show='')  # Show the password
+        button.configure(image=ctk.CTkImage(Image.open(r"./assets/eye-solid.png"), size=(15, 15)))  # Change icon to eye open
+    else:
+        pass_entry.configure(show='*')  # Hide the password
+        button.configure(image=ctk.CTkImage(Image.open(r"./assets/eye-slash-solid.png"), size=(15, 15)))  # Change icon to eye closed
 
+
+# Setting up the Database
 try:
     connection = sqlite3.connect("Database.db")
     cursor = connection.cursor()
@@ -109,23 +119,23 @@ finally:
 def generate_otp(is_admin, user_id):
     #generating 4 digit random string
     otp = "".join([str(random.randint(0, 9)) for _ in range(4)])
+
+    from_mail = os.environ.get("GMail_ID") # hid the senders mail in Environment variable
+    password = os.environ.get("GMail_Pass") # hid the senders mail password in Environment variable
+
     try:
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
-        from_mail = os.environ.get("GMail_ID") # hid the senders mail in Environment variable
-        #print(from_mail)
-        server.login(from_mail, os.environ.get("GMail_Pass For Sending Mail")) # hid the senders mail password in Environment variable
-        message = f"Subject: OTP Verification\n\nYour OTP is: {otp}"
-        server.sendmail(from_mail, user_id, message)
-        server.quit()
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.starttls()
+            #print(from_mail)
+            server.login(from_mail, password)
+
+            message = f"Subject: OTP Verification\n\nYour OTP is: {otp}"
+            server.sendmail(from_mail, user_id, message)
+
     except Exception as e:
         messagebox.showerror("Email Error", f"Failed to send OTP email: {str(e)}")
-    if is_admin:
-        #print("this is admin's: ",otp)
-        return otp, is_admin
-    else:
-        #print("this is users: ",otp)
-        return otp, is_admin
+
+    return otp, is_admin
 
 # Making widgets reuseable
 
@@ -166,7 +176,7 @@ class CustomEntry(ctk.CTkEntry):
         super().__init__(
             master=master,
             height=38,
-            width=220,
+            width=230,
             placeholder_text=placeholder_text,
             placeholder_text_color="#A4A6AC",
             fg_color="white",
@@ -184,7 +194,7 @@ def main():
 class Application(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.geometry("500x600+500+80")
+        self.geometry("500x600+610+35")
         self.resizable(False, False)
         ctk.set_appearance_mode("dark")
         self.title("Login")
@@ -320,7 +330,7 @@ class login_Window(ctk.CTkFrame):
         login_admin_button = CustomButton(master=self, text="Login as Admin", command=Admin_Login)
         login_admin_button.place(x=50, y=175)
 
-        login_user_button = CustomButton(master=self, text="Login as User", command=User_Login)
+        login_user_button = CustomButton(master=self, text="Login as Student", command=User_Login)
         login_user_button.place(x=50, y=240)
 
         BackToWindow = OtherButton(master=self, text="Back", cursor="hand2", command=BackToWindow)
@@ -396,22 +406,24 @@ class Add_admin_account(ctk.CTkFrame):
 
             if admin_code == '' or admin_id == '' or admin_name == '' or email == '' or password =='':
                 messagebox.showerror("Error!!","All fields are required")
-            elif not email.endswith("@gmail.com"):
-                messagebox.showerror(message="Enter Valid Email ID")
             elif admin_code != '1234':
                 messagebox.showerror("Error!","Wrong Admin Code")
+            elif not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+                messagebox.showerror(message="Enter Valid Email ID")
             else:
                 try:
                     conn = sqlite3.connect("database.db")
                     cursor = conn.cursor()
                     # Query to check if the user exist
-                    query = "SELECT * FROM AdminDetails WHERE AdminID = ?"
-                    values = (admin_id,)
+                    query = "SELECT * FROM AdminDetails WHERE AdminID = ? OR Email = ?"
+                    values = (admin_id, email)
                     cursor.execute(query, values)
                     record = cursor.fetchone()
                     #print(record)
                     if record and record[0] == admin_id:
-                        messagebox.showwarning("User Exist!",message="User Already Exist")
+                        messagebox.showerror("User Exist!",message="User with same ID already exist")
+                    elif record and record[2] == email:
+                        messagebox.showerror("User Exist!",message="User with same EMail already Exist")
                     else:
                         query = "INSERT INTO AdminDetails (AdminID, AdminName, Email, Pass, img) VALUES (?, ?, ?, ?, ?)"
                         values = (admin_id, admin_name, email, password, pic_data)
@@ -455,8 +467,19 @@ class Add_admin_account(ctk.CTkFrame):
         self.email_entry = CustomEntry(master=self, placeholder_text="Email")
         self.email_entry.place(x=50, y=295)
 
-        self.createPass_entry = CustomEntry(master=self, placeholder_text="Create Password", show="*")
+        self.createPass_entry = CustomEntry(master=self, placeholder_text="Create Password", show='*')
         self.createPass_entry.place(x=50, y=350)
+
+        self.show_hide_button = ctk.CTkButton(master=self, image=ctk.CTkImage(Image.open(r".\assets\eye-slash-solid.png"), size=(15, 15)),
+                                            text="",
+                                            width=10,
+                                            border_width=0,
+                                            hover=None,
+                                            fg_color='transparent',
+                                            cursor="hand2",
+                                            command=lambda: show_hide(self.createPass_entry, self.show_hide_button)
+                                            )
+        self.show_hide_button.place(x=280, y=355)
 
         create_button = CustomButton(master=self, text="Create Account", command=create)
         create_button.place(x=50, y=420)
@@ -535,8 +558,8 @@ class Add_user_account(ctk.CTkFrame):
             if stud_name == '' or gender == "Gender" or age == '' or phone_no == '' or course =='Course' or email=='' or password == '':
                 messagebox.showerror("Error!!","All fields are required")
             elif len(phone_no) != 10:
-                messagebox.showerror(message="Enter Valid phone number")
-            elif not email.endswith("@gmail.com"):
+                messagebox.showerror(message="Enter Valid phone number length\nExclude 0 or +91")
+            elif not re.match(r"[^@]+@[^@]+\.[^@]+", email):
                 messagebox.showerror(message="Enter Valid Email ID")
             else:
                 try:
@@ -562,7 +585,7 @@ class Add_user_account(ctk.CTkFrame):
                         cursor.close()
                         conn.close()
                         self.place_forget()
-                        self.app.studentCard_frame = StudentCard(self.app.bg_label, self.app, self.email_entry.get().lower().strip())
+                        self.app.studentCard_frame = StudentCard(self.app.bg_label, self.app, email)
                         self.app.studentCard_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
                 except Exception as e:
                     messagebox.showerror("Database Error", f"An error occurred: {e}")
@@ -627,6 +650,17 @@ class Add_user_account(ctk.CTkFrame):
         self.createPass_entry = CustomEntry(master=self, placeholder_text="Create Password", show='*')
         self.createPass_entry.place(x=130, y=350)
 
+        self.show_hide_button = ctk.CTkButton(master=self, image=ctk.CTkImage(Image.open(r".\assets\eye-slash-solid.png"), size=(15, 15)),
+                                            text="",
+                                            width=10,
+                                            border_width=0,
+                                            hover=None,
+                                            fg_color='transparent',
+                                            cursor="hand2",
+                                            command=lambda: show_hide(self.createPass_entry, self.show_hide_button)
+                                            )
+        self.show_hide_button.place(x=360, y=355)
+
         create_button =CustomButton(master=self, text="Create Account", command=create_user)
         create_button.place(x=130, y=420)
 
@@ -648,15 +682,9 @@ class StudentCard(ctk.CTkFrame):
             save_path = filedialog.asksaveasfilename(defaultextension=".png", filetypes=[("PNG files", "*.png"), ("All files", "*.*")])
             if save_path:
                 # Get the bounding box of the widget
-                x = self.winfo_rootx()
-                y = self.winfo_rooty()
-                width = self.winfo_width()
-                height = self.winfo_height()
-                
-                # Capture the screen area of the widget
-                img = ImageGrab.grab(bbox=(x, y, x + width, y + height))
-                # Save the image
-                img.save(save_path)
+                x, y, width, height = self.winfo_rootx(), self.winfo_rooty(), self.winfo_width(), self.winfo_height()
+                # Capture the screen area of the widget and save
+                ImageGrab.grab(bbox=(x, y, x + width, y + height)).save(save_path)
                 messagebox.showinfo(message="Student card saved")
 
         def DeleteWindow(event):
@@ -670,30 +698,23 @@ class StudentCard(ctk.CTkFrame):
 
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
-        query = "SELECT * FROM StudentDetails WHERE Email = ?"
-        values = (self.email_id,)
-        cursor.execute(query, values)
-        record = cursor.fetchone()
-        conn.commit()
-        cursor.close()
-        conn.close()
-        stud_id = record[0]
-        stud_name = record[1].capitalize()
-        stud_gender = record[2].capitalize()
-        stud_age = record[3]
-        stud_phone = record[4]
-        stud_course = record[5].capitalize()
-        stud_email = record[6]
-        img_data = record[8]
+
+        try:
+            cursor.execute("SELECT * FROM StudentDetails WHERE Email = ?", (self.email_id,))
+            record = cursor.fetchone()
+        except sqlite3.Error as e:
+            messagebox.showerror(message=f"Database Error: {e}")
+            #print(e)
+        
+        stud_id, stud_name, stud_gender, stud_age, stud_phone, stud_course, stud_email, img_data = (
+            record[0], record[1].capitalize(), record[2].capitalize(), record[3],
+            record[4], record[5].capitalize(), record[6], record[8]
+        )
         # Convert BLOB data to an image
-        img = Image.open(io.BytesIO(img_data))
-        img = img.resize((150, 150), Image.LANCZOS)  # Resize with LANCZOS for quality downsampling
+        img = Image.open(io.BytesIO(img_data)).resize((150, 150), Image.LANCZOS)
         ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(135, 135))  # Convert to CTkImage
         label = ctk.CTkLabel(master=self, image=ctk_img, text="", fg_color="transparent")  # Set transparent color
         label.place(x=145, y=65)
-
-        # name_label = ctk.CTkLabel(self, text=f"Student Name: {stud_id}", anchor="w")
-        # name_label.place(x=110, y=100)
 
         id_label = ctk.CTkLabel(self, text="Student ID: ", font=("Century Gothic", 18, 'bold'))
         name_label = ctk.CTkLabel(self, text="Name: ", font=("Century Gothic", 18, 'bold'))
@@ -711,7 +732,6 @@ class StudentCard(ctk.CTkFrame):
         course = ctk.CTkLabel(self, text=f"{stud_course}", font=("Century Gothic", 18))
         email = ctk.CTkLabel(self, text=f"{stud_email}", font=("Century Gothic", 18))
         
-        
         id_label.place(x=15, y = 230)
         name_label.place(x=15, y = 258)
         gender_label.place(x=15, y = 288)
@@ -719,7 +739,6 @@ class StudentCard(ctk.CTkFrame):
         phone_label.place(x=15, y = 348)
         course_label.place(x=15, y = 378)
         email_label.place(x=15, y = 408)
-        
         
         id.place(x=130, y = 230)
         name.place(x=130, y = 258)
@@ -730,7 +749,7 @@ class StudentCard(ctk.CTkFrame):
         email.place(x=130, y = 408)
 
         save_card_button = CustomButton(master=self, text="Save Card", command=save_card)
-        save_card_button.place(x=80, y=455)
+        save_card_button.place(x=105, y=455)
 
         # Setting Cross Icon on frame
         delete_window_Img = ctk.CTkImage(light_image=Image.open(r".\assets\delete_window.png"), size=(30, 30))
@@ -812,6 +831,17 @@ class AdminLogin(ctk.CTkFrame):
         self.pass_entry = CustomEntry(master=self, placeholder_text="Password", show='*')
         self.pass_entry.place(x=50, y=210)
 
+        self.show_hide_button = ctk.CTkButton(master=self, image=ctk.CTkImage(Image.open(r".\assets\eye-slash-solid.png"), size=(15, 15)),
+                                            text="",
+                                            width=10,
+                                            border_width=0,
+                                            hover=None,
+                                            fg_color='transparent',
+                                            cursor="hand2",
+                                            command=lambda: show_hide(self.pass_entry, self.show_hide_button)
+                                            )
+        self.show_hide_button.place(x=280, y=215)
+
         login_button = CustomButton(master=self,  text="Login", command=login)
         login_button.place(x=50, y=268)
 
@@ -888,7 +918,7 @@ class UserLogin(ctk.CTkFrame):
         user_login_img_label = ctk.CTkLabel(master=self, image=user_login_img, text="")
         user_login_img_label.place(x=160, y=60, anchor=tk.CENTER)
 
-        l1= ctk.CTkLabel(master= self, text = "Login as User", font=("Times New Roman", 22))
+        l1= ctk.CTkLabel(master= self, text = "Login as Student", font=("Times New Roman", 22))
         l1.place(x=160, y=125, anchor = tk.CENTER)
 
         self.user_entry = CustomEntry(master=self, placeholder_text="Student ID or Email")
@@ -896,6 +926,17 @@ class UserLogin(ctk.CTkFrame):
 
         self.pass_entry = CustomEntry(master=self, placeholder_text="Password", show='*')
         self.pass_entry.place(x=50, y=210)
+
+        self.show_hide_button = ctk.CTkButton(master=self, image=ctk.CTkImage(Image.open(r".\assets\eye-slash-solid.png"), size=(15, 15)),
+                                            text="",
+                                            width=10,
+                                            border_width=0,
+                                            hover=None,
+                                            fg_color='transparent',
+                                            cursor="hand2",
+                                            command=lambda: show_hide(self.pass_entry, self.show_hide_button)
+                                            )
+        self.show_hide_button.place(x=280, y=215)
 
         login_button = CustomButton(master=self,  text="Login", command=login)
         login_button.place(x=50, y=268)
@@ -921,6 +962,8 @@ class FindAccount(ctk.CTkFrame):
             self.user_id = self.email_entry.get().lower().strip()
             if self.user_id =='':
                 messagebox.showerror("Error!","Please Enter EMail-ID")
+            elif not re.match(r"[^@]+@[^@]+\.[^@]+", self.user_id):
+                messagebox.showerror("Error!","Please Enter Valid EMail-ID")
             else:
                 try:
                     conn = sqlite3.connect("database.db")
@@ -994,7 +1037,12 @@ class OTPEntry(ctk.CTkFrame):
 
         def verify_otp():
             input_opt = self.otp_entry.get().strip()
-            if input_opt == self.otp or self.is_admin:
+            if input_opt == self.otp and self.is_admin:
+                messagebox.showinfo(message="OTP Verified")
+                self.place_forget()
+                self.app.reset_pass_frame = ResetPassword(self.app.bg_label, self.app, self.user_id, is_admin)
+                self.app.reset_pass_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+            elif input_opt == self.otp and self.is_admin == False:
                 messagebox.showinfo(message="OTP Verified")
                 self.place_forget()
                 self.app.reset_pass_frame = ResetPassword(self.app.bg_label, self.app, self.user_id, is_admin)
@@ -1092,7 +1140,7 @@ class ResetPassword(ctk.CTkFrame):
             message = messagebox.askquestion(message="Do you want to cancel?")
             if message == "yes":
                 self.place_forget()
-                self.app.login_frame = UserLogin(self.app.bg_label, self.app)
+                self.app.login_frame = login_Window(self.app.bg_label, self.app)
                 self.app.login_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
         # Setting reset password img
@@ -1119,6 +1167,28 @@ class ResetPassword(ctk.CTkFrame):
 
         self.newPass_entry2 = CustomEntry(master=self, placeholder_text="New Password, again", show="*")
         self.newPass_entry2.place(x=50, y=210)
+
+        self.show_hide_button1 = ctk.CTkButton(master=self, image=ctk.CTkImage(Image.open(r".\assets\eye-slash-solid.png"), size=(15, 15)),
+                                            text="",
+                                            width=10,
+                                            border_width=0,
+                                            hover=None,
+                                            fg_color='transparent',
+                                            cursor="hand2",
+                                            command=lambda: show_hide(self.newPass_entry1, self.show_hide_button1)
+                                            )
+        self.show_hide_button1.place(x=278, y=165)
+
+        self.show_hide_button2 = ctk.CTkButton(master=self, image=ctk.CTkImage(Image.open(r".\assets\eye-slash-solid.png"), size=(15, 15)),
+                                            text="",
+                                            width=10,
+                                            border_width=0,
+                                            hover=None,
+                                            fg_color='transparent',
+                                            cursor="hand2",
+                                            command=lambda: show_hide(self.newPass_entry2, self.show_hide_button2)
+                                            )
+        self.show_hide_button2.place(x=278, y=215)
 
         reset_button = CustomButton(master=self, text="Reset Password", command=reset_password)
         reset_button.place(x=50, y=260)
