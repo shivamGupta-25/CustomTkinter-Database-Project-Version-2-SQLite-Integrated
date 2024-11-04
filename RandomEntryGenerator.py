@@ -2,6 +2,8 @@ import sqlite3
 from faker import Faker
 import random
 
+# Generated Random Entried to test the Searching functionality
+
 # Initialize Faker for generating random data
 fake = Faker()
 

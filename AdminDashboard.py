@@ -346,14 +346,16 @@ class DashboardWindow(ctk.CTkToplevel):
             search_box.set('Search By')
 
         def search_student():
+            exclude_emails = ['dummy1@gmail.com', 'dummy2@gmail.com', 'dummy3@gmail.com']
             option = search_box.get()
             if option == "ID":
                 option = "StudentID"
             elif option == "Name":
-                option ="StudentName"
+                option = "StudentName"
             elif option == "Phone":
-                option ="Contact"
+                option = "Contact"
             value = searchEntry.get()
+
             if searchEntry.get() == '':
                 messagebox.showerror("Error", "Enter value to search")
             elif search_box.get() == "Search By":
@@ -361,16 +363,27 @@ class DashboardWindow(ctk.CTkToplevel):
             else:
                 conn = sqlite3.connect("database.db")
                 cursor = conn.cursor()
-                query = f"SELECT * FROM StudentDetails WHERE {option} = ?"
-                values = (value,)
+
+                # Construct the query with an exclusion condition for emails
+                placeholders = ', '.join('?' for _ in exclude_emails)
+                query = f"""
+                    SELECT * FROM StudentDetails
+                    WHERE {option} = ? AND Email NOT IN ({placeholders})
+                """
+                values = (value, *exclude_emails)
+                
                 cursor.execute(query, values)
-                record = cursor.fetchall()
+                records = cursor.fetchall()
+                
                 conn.commit()
                 cursor.close()
                 conn.close()
+
+                # Clear existing tree view data and insert new records
                 tree.delete(*tree.get_children())
-                for student in record:
-                    tree.insert('',"end",values=student)
+                for student in records:
+                    tree.insert('', "end", values=student)
+
 
         def update_student():
             selected_item = tree.selection()
