@@ -26,8 +26,6 @@ def AdminData(user_id):
     conn.close()
     return data
 
-# Function to send an email
-
 class CustomButton(ctk.CTkButton):
     def __init__(self, master, text, command=None, **kwargs):
         super().__init__(master, text=text, command=command, **kwargs)
@@ -384,7 +382,6 @@ class DashboardWindow(ctk.CTkToplevel):
                 for student in records:
                     tree.insert('', "end", values=student)
 
-
         def update_student():
             selected_item = tree.selection()
             if not selected_item:
@@ -597,6 +594,7 @@ class DashboardWindow(ctk.CTkToplevel):
         announcement_frame.grid_propagate(False)
         announcement_frame.grid(row=0, column=0)
 
+        # Function to send Email
         def send_email(subject, body, recipients):
             if not recipients:
                 messagebox.showwarning("No Recipients", "No email addresses found for the selected courses.")

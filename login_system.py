@@ -12,6 +12,8 @@ import re
 from io import BytesIO
 Image.MAX_IMAGE_PIXELS = None
 
+
+# Show - hide password Func
 def show_hide(pass_entry, button):
     # Check the current show option to toggle
     if pass_entry.cget('show') == '*':
@@ -20,7 +22,6 @@ def show_hide(pass_entry, button):
     else:
         pass_entry.configure(show='*')  # Hide the password
         button.configure(image=ctk.CTkImage(Image.open(r"./assets/eye-slash-solid.png"), size=(15, 15)))  # Change icon to eye closed
-
 
 # Setting up the Database
 try:
