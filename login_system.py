@@ -12,7 +12,6 @@ import re
 from io import BytesIO
 Image.MAX_IMAGE_PIXELS = None
 
-
 # Show - hide password Func
 def show_hide(pass_entry, button):
     # Check the current show option to toggle

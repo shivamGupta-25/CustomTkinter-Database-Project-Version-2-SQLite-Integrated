@@ -75,7 +75,7 @@ class DashboardWindow(ctk.CTkToplevel):
         self.userid = username
         #print(self.userid)
         self.geometry("930x580+250+50")
-        self.title("Student Dashboard")
+        self.title("Admin Dashboard")
         self.resizable(False, False)
         #app.iconbitmap(r'.\assets\dashboard.ico')
 
