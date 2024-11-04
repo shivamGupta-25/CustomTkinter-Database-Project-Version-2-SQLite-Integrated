@@ -161,7 +161,8 @@ https://www.linkedin.com/posts/shivam-raj-gupta_python-tkinter-sqlite-activity-7
 ## Screenshots
 
 ### ***Login System and Password recovery:***  
-![Login System and Password Recovery](https://github.com/user-attachments/assets/7c79b733-213e-4cf7-8ad1-9c6bab3098d8)
+![Login System and Password Recovery](https://github.com/user-attachments/assets/27d96077-608e-4d98-be82-dffb5d3ff7cd)
+
 
 ### ***Student Card:***  
 ![Student Card](https://github.com/user-attachments/assets/4daf16c7-0537-453a-a8f0-db3c1cf82975)
